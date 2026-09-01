@@ -73,7 +73,7 @@ user wants a rizz generator, which is a commodity toy with no retention.
      +---------------------------------------------------------------------+
 ```
 
-1. **Capture** — a conversation enters Shortlist (see §6 for how).
+1. **Capture** — a conversation enters Shortlist (see §7 for how).
 2. **Organize** — it becomes a Person card with context, source app, and state.
 3. **Nudge** — Shortlist tells you which thread is decaying and worth saving.
 4. **Draft** — three replies in your voice. You edit. **You** press send.
@@ -135,7 +135,92 @@ Read-receipt-style analytics on your own behavior.
 
 ---
 
-## 6. The hard part: getting the data in
+## 6. Pacing and the assertiveness dial
+
+The defaults lean toward the ask. Our user's modal failure is **under**-asking — a thread
+that dies at message 40 with no plan is the most common way a good match is lost. An
+assistant that waits to be told what to do just reproduces the user's own hesitation.
+
+But "lean harder" is the wrong knob, and this is the correction that matters:
+
+> **What raises date rate is specificity, not earliness.** *"Want to grab a drink
+> sometime?"* is a dead end at message 6 and at message 60. *"Thursday at 7, that wine bar
+> on 5th?"* converts. The vague ask feels safer to send, which is exactly why people send
+> it, and it is why threads stall *after* the ask rather than before it.
+
+So the strength setting primarily modulates **how concrete the proposal is**, and only
+secondarily **when it fires**.
+
+### Two settings
+
+**Mode — what you're here for.** `Casual` / `Dating` / `Serious`. Changes pacing, tone,
+venue defaults, and what counts as a ripe thread. This is the more valuable of the two
+settings: a relationship-seeker and a casual dater need genuinely different timing, and
+this one choice improves every other feature in the app.
+
+**Strength — how forward the defaults are.** `Gentle` / `Balanced` / `Forward`, defaulting
+to Balanced with a deliberate slight forward lean.
+
+| | Gentle | **Balanced** *(default)* | Forward |
+|---|---|---|---|
+| Ripe threshold | +25% | baseline | −20% |
+| Lead draft | keep talking | soft ask | concrete ask, time + place |
+| Nudge copy | "worth a reply" | "this one's cooling" | "ask her out today" |
+| Unanswered follow-up | none | one, day 4 | one, day 3 |
+
+The lean lives in **ordering and defaults, never in availability.** The forward draft sits
+in slot one; slots two and three always hold a softer ask and a keep-talking option. The
+user can see the dial is leaning, and nothing quieter is ever buried. That is the
+difference between coaching a customer and running a dark pattern on one.
+
+### The floor: "not too quick" is a rule, not a setting
+
+Beneath the dial sits a floor that `Forward` cannot cross:
+
+- Never propose an ask before both sides have sent 4+ messages
+- Never before the other person has asked at least one question — reciprocity is the
+  single best ripeness signal we have
+- Never twice in one thread without a new signal
+- Never escalate sexual content, at any setting
+
+**Per-thread auto-damping.** Ripeness is computed per thread, and weak reciprocity lowers
+it regardless of the global setting: shortening replies, growing latency, no questions
+back, a soft no (*"things are crazy this week"*). The dial drops for that thread and the
+app says why — *"She's giving short replies. I'd wait."*
+
+This mechanism is what makes leading defaults safe to ship. It prevents the one failure
+mode that would actually kill the product: a paying user nudged into pestering someone who
+is already gone.
+
+### Directness, never pressure
+
+The line the dial cannot cross at any setting: **`Forward` means clearer, not heavier.**
+Being concrete is a gift to the other person — it is easy to say yes or no to "Thursday at
+7." Manufactured scarcity, guilt, false urgency, negging, and escalating emotional stakes
+are a different thing and are out of range everywhere on the dial. Directness respects the
+other person's time; pressure spends it.
+
+### Calibrate from outcomes, not vibes
+
+A slider the user guesses at is a worse product than a system that learns. Ship the dial
+as a starting point, then calibrate per user from their own results: after roughly ten
+asks, replace the default curve with that user's actual conversion pattern — and show the
+reasoning.
+
+> *"Your asks land three times more often once she's asked you a question. I'll wait for
+> that."*
+
+That turns a settings screen into the smartest thing in the app.
+
+### How we know it works
+
+Instrument **dates per good thread**, not asks sent. If `Forward` raises ask volume and
+lowers date rate, `Forward` is worse and the data will say so within a few hundred users.
+The dial ships as a measured hypothesis, not a preference.
+
+---
+
+## 7. The hard part: getting the data in
 
 **There are no public APIs.** Tinder, Hinge, and Bumble all prohibit automated access in
 their terms of service. Match Group in particular enforces aggressively. This is not a
@@ -161,7 +246,7 @@ the reason to build the scheduler as the heart of the product rather than the me
 
 ---
 
-## 7. Lines we don't cross
+## 8. Lines we don't cross
 
 These are product decisions, not disclaimers.
 
@@ -185,7 +270,7 @@ it.
 
 ---
 
-## 8. Architecture sketch
+## 9. Architecture sketch
 
 ```
   iOS app (SwiftUI)
@@ -210,7 +295,7 @@ landing page. For a nervous user, the privacy policy *is* the pitch.
 
 ---
 
-## 9. Business model
+## 10. Business model
 
 $12–15/month subscription, free tier capped at three active people.
 
@@ -224,7 +309,7 @@ single. Shortlist makes money when you go on dates. Lead with that.
 
 ---
 
-## 10. Risks
+## 11. Risks
 
 | Risk | Severity | Mitigation |
 |---|---|---|
@@ -232,13 +317,14 @@ single. Shortlist makes money when you go on dates. Lead with that.
 | "AI wrote your messages" reads as catfishing | High | Draft-assist framing, user-always-sends, voice matching from real messages |
 | Generic AI voice repels matches | High | Over-invest in voice cloning; short and specific over clever; ship a kill switch for drafts |
 | Bridge friction kills retention | High | The nudge and the scheduler must deliver value from a *single* pasted thread |
+| Leading defaults nudge users into pestering | **Critical** | Hard floor beneath the dial + per-thread auto-damping on weak reciprocity (§6) |
 | Creepy-factor press cycle | Medium | Publish the §7 lines publicly, before anyone asks |
 | Incumbents ship it | Medium | They won't — it's cross-app by definition, and it's counter to their retention model |
 | Data breach | Medium | Encryption, minimal retention, no message content in logs |
 
 ---
 
-## 11. MVP scope
+## 12. MVP scope
 
 Ruthlessly cut to what one developer can ship. Everything here is buildable solo on iOS.
 
@@ -269,7 +355,7 @@ That is 90 seconds and it lands.
 
 ---
 
-## 12. Decisions made in this draft
+## 13. Decisions made in this draft
 
 Recorded so they can be argued with rather than silently inherited:
 
@@ -280,17 +366,23 @@ Recorded so they can be argued with rather than silently inherited:
    willingness to pay, better retention, better story.
 3. **iOS-first, share-sheet ingestion.** Not a browser extension — Hinge has no web
    client, and the extension path carries ban risk we shouldn't hand to users.
-4. **Draft assist, never autopilot** — as a permanent product constraint, not a v1
+4. **The defaults lean toward the ask**, tuned by a Mode and Strength setting, with a
+   hard floor and per-thread damping underneath (§6). Strength modulates *specificity*
+   first and *timing* second.
+5. **Draft assist, never autopilot** — as a permanent product constraint, not a v1
    limitation to be relaxed later.
 
 ---
 
-## 13. Open questions
+## 14. Open questions
 
 - Does a hand-entered pipeline board hold attention for two weeks with no AI at all?
   **Test this before building anything else.** It is the load-bearing assumption.
 - How much sent-message history is needed before voice matching stops sounding like a
   chatbot? Guess: 200 messages. Unverified.
 - What is the honest ceiling on OCR-parsing a Hinge screenshot into a clean thread?
-- Both-sides-using-it: feature or horror? (§7)
+- Does `Forward` mode actually raise dates per good thread, or only asks sent? The dial
+  is a hypothesis until that number exists.
+- Where exactly is the reciprocity floor? Four messages and one question back is a guess.
+- Both-sides-using-it: feature or horror? (§8)
 - Is "Shortlist" the name? It's clean and describes the product, but it's provisional.
