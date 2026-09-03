@@ -7,10 +7,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   /* ==========================================================================
-     Human Brain Simulator
+     Human Brain Simulator — 3D
+     The brain is generated procedurally with Three.js (no model files).
      Data-driven: VIEWS, REGIONS and SCENARIOS (bottom of file) define the app.
-     To add a new body part (heart, lungs, ...): add a VIEW, draw an SVG with
-     <path data-region="..."> shapes for it, and add REGIONS with view: "<id>".
      ========================================================================== */
   :root {
     --ground: #EEF1F5;
@@ -18,9 +17,8 @@
     --ink: #1B2430;
     --muted: #5C6B7A;
     --line: #D5DCE5;
-    --tissue: #E9C3C6;
-    --tissue-line: #C98F95;
     --monitor: #F7F9FB;
+    --stage-bg: radial-gradient(ellipse at 50% 40%, #FFFFFF 0%, #E4E9F0 100%);
     --shadow: 0 8px 28px rgba(27, 36, 48, 0.08);
     --accent: #2F6FED;
   }
@@ -31,9 +29,8 @@
       --ink: #E8EDF3;
       --muted: #98A6B5;
       --line: #2B3641;
-      --tissue: #4A3A40;
-      --tissue-line: #6E525A;
       --monitor: #10161C;
+      --stage-bg: radial-gradient(ellipse at 50% 40%, #243040 0%, #121820 100%);
       --shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
       --accent: #6C9BFF;
     }
@@ -44,9 +41,8 @@
     --ink: #E8EDF3;
     --muted: #98A6B5;
     --line: #2B3641;
-    --tissue: #4A3A40;
-    --tissue-line: #6E525A;
     --monitor: #10161C;
+    --stage-bg: radial-gradient(ellipse at 50% 40%, #243040 0%, #121820 100%);
     --shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
     --accent: #6C9BFF;
   }
@@ -54,140 +50,83 @@
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body {
-    margin: 0;
-    background: var(--ground);
-    color: var(--ink);
-    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-    font-size: 15px;
-    line-height: 1.5;
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-size: 15px; line-height: 1.5;
   }
-  .wrap { max-width: 1120px; margin: 0 auto; padding: 18px 20px 40px; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 18px 20px 40px; }
 
-  header {
-    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
-    gap: 14px; padding-bottom: 16px;
-  }
-  h1 {
-    font-family: "Sora", sans-serif; font-weight: 700;
-    font-size: clamp(1.3rem, 2.6vw, 1.7rem); margin: 0; letter-spacing: -0.01em;
-  }
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 16px; }
+  h1 { font-family: "Sora", sans-serif; font-weight: 700; font-size: clamp(1.3rem, 2.6vw, 1.7rem); margin: 0; letter-spacing: -0.01em; }
   h1 small {
-    display: block; font-family: "IBM Plex Mono", monospace; font-weight: 400;
-    font-size: 0.72rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
-    margin-top: 2px;
+    display: block; font-family: "IBM Plex Mono", monospace; font-weight: 400; font-size: 0.72rem;
+    color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px;
   }
-  .seg {
-    display: inline-flex; background: var(--panel); border: 1px solid var(--line);
-    border-radius: 10px; padding: 3px; gap: 2px;
-  }
+  .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
   .seg button {
-    font: 500 0.85rem "IBM Plex Sans", sans-serif; color: var(--muted);
-    background: transparent; border: 0; border-radius: 7px; padding: 6px 13px; cursor: pointer;
+    font: 500 0.85rem "IBM Plex Sans", sans-serif; color: var(--muted); background: transparent; border: 0;
+    border-radius: 7px; padding: 6px 13px; cursor: pointer;
   }
   .seg button.on { background: var(--accent); color: #fff; }
   .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  main { display: grid; grid-template-columns: 1.45fr 1fr; gap: 18px; align-items: start; }
-  @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+  main { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
 
-  .card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-    box-shadow: var(--shadow);
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+  .stage { padding: 14px 14px 10px; }
+  .stage-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 4px 8px; }
+  .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .ghost {
+    font: 500 0.78rem "IBM Plex Sans", sans-serif; color: var(--muted); background: transparent;
+    border: 1px solid var(--line); border-radius: 7px; padding: 4px 10px; cursor: pointer;
   }
-  .stage { padding: 14px 14px 10px; position: relative; }
-  .stage-top {
-    display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: 0 4px 6px;
-  }
-  .eyebrow {
-    font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--muted);
-  }
-  .brainbox { position: relative; }
-  .view { display: none; }
-  .view.on { display: block; }
-  svg { width: 100%; height: auto; display: block; }
+  .ghost.on { color: var(--accent); border-color: var(--accent); }
 
-  /* Brain drawing */
-  .tissue { fill: var(--tissue); stroke: var(--tissue-line); stroke-width: 2; }
-  .gyri { fill: none; stroke: var(--tissue-line); stroke-width: 1.6; opacity: 0.55; pointer-events: none; }
-  [data-region] {
-    cursor: pointer;
-    fill: var(--rc);
-    fill-opacity: 0.28;
-    stroke: var(--rc);
-    stroke-width: 1.6;
-    transition: fill-opacity 0.18s ease, filter 0.18s ease;
+  .viewport {
+    position: relative; border-radius: 12px; overflow: hidden; background: var(--stage-bg);
+    border: 1px solid var(--line); height: min(520px, 62vw); cursor: grab; touch-action: none;
   }
-  [data-region]:hover { fill-opacity: 0.55; }
-  [data-region].active {
-    fill-opacity: 0.9;
-    filter: drop-shadow(0 0 6px var(--rc));
-    animation: throb 0.9s ease-in-out infinite;
+  .viewport.dragging { cursor: grabbing; }
+  .viewport canvas { width: 100%; height: 100%; display: block; }
+  .hint3d {
+    position: absolute; left: 10px; bottom: 8px; font-family: "IBM Plex Mono", monospace; font-size: 0.7rem;
+    color: var(--muted); pointer-events: none; opacity: 0.9;
   }
-  [data-region].dim { fill-opacity: 0.12; }
-  @keyframes throb {
-    0%, 100% { fill-opacity: 0.75; }
-    50% { fill-opacity: 0.98; }
+  .lbl3d {
+    position: absolute; transform: translate(-50%, -50%); font: 500 0.74rem "IBM Plex Mono", monospace;
+    color: var(--ink); background: color-mix(in srgb, var(--panel) 82%, transparent);
+    border: 1px solid var(--rc); border-radius: 6px; padding: 2px 7px; cursor: pointer; white-space: nowrap;
+    pointer-events: auto; user-select: none;
   }
-  .lbl {
-    font-family: "IBM Plex Mono", monospace; font-size: 11px; fill: var(--ink);
-    pointer-events: none; opacity: 0.85; paint-order: stroke; stroke: var(--panel); stroke-width: 3px;
-  }
-  .spark { fill: #fff; pointer-events: none; animation: spark 0.6s ease-out forwards; }
-  @keyframes spark {
-    0% { r: 1; opacity: 1; }
-    100% { r: 5; opacity: 0; }
-  }
+  .lbl3d::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--rc); margin-right: 5px; }
+  .lbl3d.on { background: var(--rc); color: #fff; border-color: var(--rc); }
+  .lbl3d.on::before { background: #fff; }
 
-  .tip {
-    position: absolute; pointer-events: none; background: var(--ink); color: var(--panel);
-    font: 500 0.8rem "IBM Plex Sans", sans-serif; padding: 4px 9px; border-radius: 6px;
-    transform: translate(-50%, -130%); white-space: nowrap; opacity: 0; transition: opacity 0.12s;
-  }
-  .tip.show { opacity: 1; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 8px 4px 0; }
+  .legend button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 0; font: 500 0.8rem "IBM Plex Sans", sans-serif; color: var(--muted); cursor: pointer; }
+  .legend button:hover { color: var(--ink); }
+  .swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; background: var(--rc); }
 
-  /* Activity monitor */
-  .monitor { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
-  .monitor-head {
-    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
-    padding: 0 4px 6px; flex-wrap: wrap;
-  }
-  .readout {
-    font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--muted);
-    font-variant-numeric: tabular-nums;
-  }
+  .monitor { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .monitor-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 0 4px 6px; flex-wrap: wrap; }
+  .readout { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .readout b { color: var(--ink); font-weight: 500; }
-  canvas#eeg {
-    width: 100%; height: 96px; display: block; background: var(--monitor);
-    border: 1px solid var(--line); border-radius: 8px;
-  }
+  canvas#eeg { width: 100%; height: 90px; display: block; background: var(--monitor); border: 1px solid var(--line); border-radius: 8px; }
 
-  /* Side panel */
   .panel { display: flex; flex-direction: column; gap: 14px; }
   .info { padding: 18px 20px; }
-  .info h2 {
-    font-family: "Sora", sans-serif; font-weight: 600; font-size: 1.25rem; margin: 0;
-    display: flex; align-items: center; gap: 10px; text-wrap: balance;
-  }
-  .swatch { width: 14px; height: 14px; border-radius: 4px; flex: none; background: var(--rc); }
+  .info h2 { font-family: "Sora", sans-serif; font-weight: 600; font-size: 1.25rem; margin: 0; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  .info h2 .swatch { width: 14px; height: 14px; }
   .role { color: var(--muted); margin: 4px 0 12px; }
-  .info h3 {
-    font: 600 0.72rem "IBM Plex Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--muted); margin: 14px 0 6px;
-  }
+  .info h3 { font: 600 0.72rem "IBM Plex Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
   .info ul { margin: 0; padding-left: 18px; }
   .info li { margin: 2px 0; }
-  .stim {
-    margin-top: 14px; width: 100%; font: 600 0.95rem "IBM Plex Sans", sans-serif;
-    background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 11px 14px; cursor: pointer;
-  }
+  .stim { margin-top: 14px; width: 100%; font: 600 0.95rem "IBM Plex Sans", sans-serif; background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 11px 14px; cursor: pointer; }
   .stim:disabled { opacity: 0.5; cursor: default; }
   .output {
-    margin-top: 10px; background: var(--monitor); border: 1px solid var(--line); border-radius: 10px;
-    padding: 10px 12px; font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; min-height: 3.6em;
-    white-space: pre-wrap; color: var(--ink);
+    margin-top: 10px; background: var(--monitor); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; min-height: 3.6em; white-space: pre-wrap; color: var(--ink);
   }
   .output .cursor { display: inline-block; width: 7px; height: 0.9em; background: var(--accent); vertical-align: -1px; animation: blinkc 0.8s step-end infinite; }
   @keyframes blinkc { 50% { opacity: 0; } }
@@ -196,19 +135,16 @@
 
   .list { display: flex; flex-direction: column; gap: 6px; }
   .row {
-    display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
-    background: var(--ground); border: 1px solid var(--line); border-radius: 10px;
-    padding: 9px 12px; cursor: pointer; font: 500 0.9rem "IBM Plex Sans", sans-serif; color: var(--ink);
+    display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; background: var(--ground);
+    border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; cursor: pointer;
+    font: 500 0.9rem "IBM Plex Sans", sans-serif; color: var(--ink);
   }
   .row:hover { border-color: var(--accent); }
   .row.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
   .row .sub { display: block; font-weight: 400; font-size: 0.8rem; color: var(--muted); }
   .row .n { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: var(--muted); flex: none; }
   .steps { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
-  .step {
-    display: flex; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--muted);
-    padding: 4px 8px; border-radius: 6px;
-  }
+  .step { display: flex; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--muted); padding: 4px 8px; border-radius: 6px; }
   .step .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rc); flex: none; }
   .step.on { background: var(--ground); color: var(--ink); }
   .step.done { color: var(--ink); }
@@ -218,25 +154,14 @@
   .quiz-fb.good { color: #2E9E5B; }
   .quiz-fb.bad { color: #D9534F; }
   .score { font-family: "IBM Plex Mono", monospace; color: var(--muted); margin-top: 8px; }
-
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 0 4px; }
-  .legend button {
-    display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 0;
-    font: 500 0.8rem "IBM Plex Sans", sans-serif; color: var(--muted); cursor: pointer;
-  }
-  .legend button:hover { color: var(--ink); }
-
-  @media (prefers-reduced-motion: reduce) {
-    [data-region].active { animation: none; }
-    .spark { animation: none; display: none; }
-  }
+  .fallback { padding: 30px; text-align: center; color: var(--muted); }
 </style>
 </head>
 <body>
 
 <div class="wrap">
   <header>
-    <h1>Human Brain Simulator<small>Click a region · Stimulate it · Run a scenario</small></h1>
+    <h1>Human Brain Simulator<small>Drag to rotate · Click a region · Stimulate it</small></h1>
     <div class="toolbar">
       <div class="seg" id="viewSeg" role="group" aria-label="View"></div>
       <div class="seg" id="modeSeg" role="group" aria-label="Mode">
@@ -250,64 +175,25 @@
   <main>
     <section class="card stage">
       <div class="stage-top">
-        <span class="eyebrow" id="viewTitle">Outside view · left hemisphere, front is left</span>
-        <div class="legend" id="legend"></div>
+        <span class="eyebrow" id="viewTitle"></span>
+        <span>
+          <button class="ghost on" id="spinBtn">Auto-rotate</button>
+          <button class="ghost on" id="labelBtn">Labels</button>
+          <button class="ghost" id="resetBtn">Reset view</button>
+        </span>
       </div>
-
-      <div class="brainbox" id="brainbox">
-        <!-- ================= OUTSIDE (LATERAL) VIEW ================= -->
-        <svg class="view on" data-view="lateral" viewBox="0 0 640 480" role="img" aria-label="Lateral view of the brain">
-          <path class="tissue" d="M110,250 C80,200 85,90 200,65 C280,45 400,40 480,70 C560,100 580,200 540,270 C520,290 490,295 455,285 C420,300 380,305 350,300 C280,305 210,310 170,290 C155,275 150,258 110,250 Z"/>
-          <path data-region="frontal" style="--rc:#F0876A" d="M110,250 C80,200 85,90 200,65 C250,52 300,50 335,60 C325,120 315,170 300,215 C250,225 200,235 160,245 C140,250 125,252 110,250 Z"/>
-          <path data-region="parietal" style="--rc:#5FA8D3" d="M335,60 C380,48 440,52 480,70 C495,110 500,150 500,190 C470,205 430,210 400,205 C365,208 330,212 300,215 C315,170 325,120 335,60 Z"/>
-          <path data-region="occipital" style="--rc:#B48CDD" d="M480,70 C560,100 580,200 540,270 C520,290 490,295 455,285 C465,255 480,225 500,190 C500,150 495,110 480,70 Z"/>
-          <path data-region="temporal" style="--rc:#7FBF7B" d="M160,245 C200,235 250,225 300,215 C330,212 365,208 400,205 C425,230 445,260 455,285 C420,300 380,305 350,300 C280,305 210,310 170,290 C155,275 150,258 160,245 Z"/>
-          <path data-region="cerebellum" style="--rc:#EFBE4B" d="M400,300 C430,290 470,290 500,300 C540,320 545,370 510,390 C480,405 430,405 405,385 C385,365 385,325 400,300 Z"/>
-          <path class="gyri" d="M412,325 C440,315 480,315 512,330 M408,350 C440,340 480,340 518,355 M412,375 C440,366 478,366 508,380"/>
-          <path data-region="brainstem" style="--rc:#8C9AA8" d="M350,300 C370,300 385,305 400,305 C405,340 400,380 395,420 C393,445 385,465 375,470 C360,470 350,455 348,430 C345,390 345,340 350,300 Z"/>
-          <path class="gyri" d="M150,120 C170,150 150,180 175,200 M205,90 C225,130 200,170 230,205 M260,75 C280,120 255,160 285,200 M370,80 C390,120 365,160 395,195 M430,90 C450,130 425,160 455,190 M500,120 C520,160 500,200 525,240 M200,265 C240,255 300,255 330,270 M250,290 C300,280 360,280 410,290"/>
-          <text class="lbl" x="150" y="150">frontal</text>
-          <text class="lbl" x="385" y="130">parietal</text>
-          <text class="lbl" x="495" y="230">occipital</text>
-          <text class="lbl" x="255" y="275">temporal</text>
-          <text class="lbl" x="425" y="360">cerebellum</text>
-          <text class="lbl" x="335" y="400">brainstem</text>
-        </svg>
-
-        <!-- ================= INSIDE (MEDIAL) VIEW ================= -->
-        <svg class="view" data-view="medial" viewBox="0 0 640 480" role="img" aria-label="Medial view of the brain">
-          <path class="tissue" d="M110,250 C80,200 85,90 200,65 C280,45 400,40 480,70 C560,100 580,200 540,270 C520,290 490,295 455,285 C420,300 380,305 350,300 C280,305 210,310 170,290 C155,275 150,258 110,250 Z"/>
-          <path class="gyri" d="M170,110 C200,140 190,190 220,230 M250,80 C270,120 250,150 270,180 M350,70 C365,100 350,120 360,135 M440,80 C460,120 440,150 470,175 M520,140 C535,180 520,210 540,250"/>
-          <path data-region="corpus" style="--rc:#D9A066" d="M190,200 C200,150 300,130 400,140 C460,146 490,175 480,205 C470,215 455,215 450,205 C450,180 420,165 380,165 C320,160 240,175 225,210 C220,220 200,222 190,200 Z"/>
-          <ellipse data-region="thalamus" style="--rc:#E06C8C" cx="340" cy="215" rx="45" ry="28"/>
-          <ellipse data-region="hypothalamus" style="--rc:#F2A65A" cx="315" cy="255" rx="30" ry="14"/>
-          <g data-region="pituitary" style="--rc:#C77DFF">
-            <path d="M305,268 L299,288" stroke="#C77DFF" stroke-width="4" fill="none"/>
-            <circle cx="298" cy="298" r="12"/>
-          </g>
-          <path data-region="hippocampus" style="--rc:#3FB8AF" d="M250,275 C290,265 330,275 360,290 C380,300 390,315 385,325 C360,320 320,305 285,300 C265,296 250,290 250,275 Z"/>
-          <ellipse data-region="amygdala" style="--rc:#E45757" cx="238" cy="284" rx="16" ry="12"/>
-          <path data-region="cerebellum" style="--rc:#EFBE4B" d="M400,300 C430,290 470,290 500,300 C540,320 545,370 510,390 C480,405 430,405 405,385 C385,365 385,325 400,300 Z"/>
-          <path class="gyri" d="M455,345 L455,310 M455,345 L430,325 M455,345 L482,322 M455,345 L425,360 M455,345 L490,362 M455,345 L440,385 M455,345 L470,388"/>
-          <path data-region="brainstem" style="--rc:#8C9AA8" d="M350,300 C370,300 385,305 400,305 C405,340 400,380 395,420 C393,445 385,465 375,470 C360,470 350,455 348,430 C345,390 345,340 350,300 Z"/>
-          <text class="lbl" x="285" y="152">corpus callosum</text>
-          <text class="lbl" x="312" y="219">thalamus</text>
-          <text class="lbl" x="196" y="262">hypothalamus</text>
-          <text class="lbl" x="188" y="303">amygdala</text>
-          <text class="lbl" x="318" y="297">hippocampus</text>
-          <text class="lbl" x="262" y="326">pituitary</text>
-          <text class="lbl" x="455" y="430">cerebellum</text>
-          <text class="lbl" x="335" y="410">brainstem</text>
-        </svg>
-        <div class="tip" id="tip"></div>
+      <div class="viewport" id="viewport">
+        <canvas id="gl"></canvas>
+        <div id="labels"></div>
+        <div class="hint3d">drag · rotate &nbsp; scroll · zoom &nbsp; click · select</div>
       </div>
-
+      <div class="legend" id="legend"></div>
       <div class="monitor">
         <div class="monitor-head">
           <span class="eyebrow">Activity monitor</span>
           <span class="readout" id="readout">idle · <b>~10 Hz</b> alpha · resting</span>
         </div>
-        <canvas id="eeg" height="96"></canvas>
+        <canvas id="eeg" height="90"></canvas>
       </div>
     </section>
 
@@ -319,22 +205,19 @@
   </main>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
   /* ======================================================================
-     VIEWS — each is one SVG above with data-view="<id>".
-     Adding a new body part = new VIEW + new SVG + REGIONS with view: "<id>".
+     VIEWS — "surface" shows the opaque cortex, "inside" makes it translucent
+     so the deep structures are visible. Regions declare their home view.
      ====================================================================== */
   const VIEWS = [
-    { id: "lateral", label: "Outside", title: "Outside view · left hemisphere, front is left" },
-    { id: "medial",  label: "Inside",  title: "Inside view · cut down the middle, front is left" },
+    { id: "lateral", label: "Surface", title: "Surface · cortex, cerebellum, brainstem" },
+    { id: "medial",  label: "Inside",  title: "Inside · cortex made transparent to show deep structures" },
   ];
 
   /* ======================================================================
-     REGIONS — the brain registry. `id` must match data-region in the SVG.
-     stimulate: what happens when this area fires (shown in the output box)
-     damage:    what goes wrong when it is injured
-     hz:        dominant rhythm to draw on the activity monitor
-     clue:      quiz prompt ("Which region ... ?")
+     REGIONS — the brain registry. `id` matches the 3D geometry's region tag.
      ====================================================================== */
   const REGIONS = [
     { id: "frontal", name: "Frontal lobe", view: "lateral", color: "#F0876A",
@@ -436,8 +319,7 @@
   ];
 
   /* ======================================================================
-     SCENARIOS — sequences of regions firing, showing the brain as a system.
-     Each step: region id, how long it fires, and a one-line caption.
+     SCENARIOS — sequences of regions firing: [region id, ms, caption]
      ====================================================================== */
   const SCENARIOS = [
     { id: "read", name: "Reading this sentence", steps: [
@@ -475,118 +357,411 @@
     ]},
   ];
 
-  /* ============================ ENGINE ============================ */
+  /* ============================ helpers ============================ */
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
   const byId = Object.fromEntries(REGIONS.map(r => [r.id, r]));
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  let mode = "explore";
-  let currentView = "lateral";
-  let activeId = null;
-  let scenarioTimer = null;
-  let typingTimer = null;
+  /* ---------- 3D simplex noise (Gustavson) for the gyri ---------- */
+  const noise3 = (() => {
+    const grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+    const p = new Uint8Array(256); let seed = 4242;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 256; i++) p[i] = i;
+    for (let i = 255; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = p[i]; p[i] = p[j]; p[j] = t; }
+    const perm = new Uint8Array(512), pm = new Uint8Array(512);
+    for (let i = 0; i < 512; i++) { perm[i] = p[i & 255]; pm[i] = perm[i] % 12; }
+    const F3 = 1 / 3, G3 = 1 / 6;
+    const dot = (g, x, y, z) => g[0] * x + g[1] * y + g[2] * z;
+    return function (xin, yin, zin) {
+      const s = (xin + yin + zin) * F3;
+      const i = Math.floor(xin + s), j = Math.floor(yin + s), k = Math.floor(zin + s);
+      const t = (i + j + k) * G3;
+      const x0 = xin - (i - t), y0 = yin - (j - t), z0 = zin - (k - t);
+      let i1, j1, k1, i2, j2, k2;
+      if (x0 >= y0) {
+        if (y0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
+        else if (x0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1; }
+        else { i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1; }
+      } else {
+        if (y0 < z0) { i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1; }
+        else if (x0 < z0) { i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1; }
+        else { i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
+      }
+      const x1 = x0 - i1 + G3, y1 = y0 - j1 + G3, z1 = z0 - k1 + G3;
+      const x2 = x0 - i2 + 2 * G3, y2 = y0 - j2 + 2 * G3, z2 = z0 - k2 + 2 * G3;
+      const x3 = x0 - 1 + 3 * G3, y3 = y0 - 1 + 3 * G3, z3 = z0 - 1 + 3 * G3;
+      const ii = i & 255, jj = j & 255, kk = k & 255;
+      const g0 = pm[ii + perm[jj + perm[kk]]], g1 = pm[ii + i1 + perm[jj + j1 + perm[kk + k1]]];
+      const g2 = pm[ii + i2 + perm[jj + j2 + perm[kk + k2]]], g3 = pm[ii + 1 + perm[jj + 1 + perm[kk + 1]]];
+      let n = 0, t0;
+      t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0; if (t0 > 0) { t0 *= t0; n += t0 * t0 * dot(grad3[g0], x0, y0, z0); }
+      t0 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1; if (t0 > 0) { t0 *= t0; n += t0 * t0 * dot(grad3[g1], x1, y1, z1); }
+      t0 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2; if (t0 > 0) { t0 *= t0; n += t0 * t0 * dot(grad3[g2], x2, y2, z2); }
+      t0 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3; if (t0 > 0) { t0 *= t0; n += t0 * t0 * dot(grad3[g3], x3, y3, z3); }
+      return 32 * n;
+    };
+  })();
+  const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
 
-  // ---- Views
+  /* ======================================================================
+     BRAIN 3D — builds the meshes procedurally and exposes:
+       setView(id) · setActive(id, dim) · clear() · sparks(id) · centroids
+     ====================================================================== */
+  const brain3d = (() => {
+    const viewport = $("#viewport"), canvas = $("#gl"), labelsBox = $("#labels");
+    if (!window.THREE) {
+      viewport.innerHTML = '<div class="fallback">3D view could not load (three.js is blocked on this network).</div>';
+      return null;
+    }
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 50);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.85));
+    const key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(2.5, 3, 3.5); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xdfe8ff, 0.35); fill.position.set(-3, -1, -2.5); scene.add(fill);
+
+    const col = hex => new THREE.Color(hex).convertSRGBToLinear();
+    const TISSUE = col("#E6B8BC"), DIM = col("#B9B3B6");
+    const cortexRegions = ["frontal", "parietal", "temporal", "occipital"];
+    const regionMeshes = {};   // id -> [mesh] (whole-mesh regions)
+    const regionVerts = {};    // id -> [{mesh, indices[]}] for sparks + centroids
+    const centroids = {};      // id -> { left: Vector3, right: Vector3 } or { any }
+    const pushVerts = (id, mesh, indices) => (regionVerts[id] = regionVerts[id] || []).push({ mesh, indices });
+
+    // ---- Cortex hemispheres
+    const hemis = [];
+    function buildHemisphere(side) {
+      const geo = new THREE.SphereGeometry(1, 120, 84);
+      const pos = geo.attributes.position, n = pos.count;
+      const ridx = new Float32Array(n), colors = new Float32Array(n * 3);
+      const lists = [[], [], [], []], v = new THREE.Vector3();
+      for (let i = 0; i < n; i++) {
+        v.fromBufferAttribute(pos, i);
+        const lat = v.x * side;                                       // +1 = outer surface
+        const tScore = smooth(-0.02, -0.3, v.y) * smooth(0.75, 0.45, Math.abs(v.z)) * smooth(0.05, 0.45, lat);
+        let lobe;
+        if (tScore > 0.4) lobe = 2;
+        else if (v.z < -0.5) lobe = 3;
+        else if (v.z > 0.32 - 0.25 * v.y) lobe = 0;
+        else lobe = 1;
+        ridx[i] = lobe; lists[lobe].push(i);
+        const nx = v.x * side;                                        // mirrored noise → symmetric hemispheres
+        const r1 = 1 - Math.abs(noise3(nx * 3.1 + 3.7, v.y * 3.1, v.z * 3.1));
+        const r2 = 1 - Math.abs(noise3(nx * 6.3 + 9.1, v.y * 6.3, v.z * 6.3));
+        const wr = (r1 - 0.5) * 0.09 + (r2 - 0.5) * 0.035;
+        const s = 1 + wr + tScore * 0.11;
+        let x = v.x * s * 0.5, y = v.y * s * 0.78, z = v.z * s * 1.12;
+        if (y < 0) y *= 0.82;
+        if (v.x * side < 0) x *= 0.55;                                // flatten the medial face
+        pos.setXYZ(i, x + side * 0.4, y, z);
+      }
+      geo.setAttribute("ridx", new THREE.BufferAttribute(ridx, 1));
+      geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      geo.computeVertexNormals();
+      const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.0, transparent: true, opacity: 1 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.userData.cortex = true; mesh.userData.side = side; mesh.renderOrder = 10;
+      scene.add(mesh); hemis.push(mesh);
+      cortexRegions.forEach((id, k) => {
+        pushVerts(id, mesh, lists[k]);
+        const c = new THREE.Vector3();
+        for (const i of lists[k]) c.add(v.fromBufferAttribute(pos, i));
+        c.divideScalar(lists[k].length || 1);
+        (centroids[id] = centroids[id] || {})[side < 0 ? "left" : "right"] = c;
+      });
+    }
+    buildHemisphere(-1); buildHemisphere(1);
+
+    // ---- Whole-mesh regions
+    function addRegionMesh(id, geo, opts = {}) {
+      const r = byId[id];
+      const mat = new THREE.MeshStandardMaterial({ color: col(r.color), roughness: 0.5, metalness: 0.05, emissive: col(r.color), emissiveIntensity: 0 });
+      const mesh = new THREE.Mesh(geo, mat);
+      if (opts.position) mesh.position.copy(opts.position);
+      if (opts.rotation) mesh.rotation.copy(opts.rotation);
+      if (opts.scale) mesh.scale.copy(opts.scale);
+      mesh.userData.region = id; mesh.userData.deep = !!opts.deep;
+      scene.add(mesh); mesh.updateMatrixWorld();
+      (regionMeshes[id] = regionMeshes[id] || []).push(mesh);
+      const idx = Array.from({ length: geo.attributes.position.count }, (_, i) => i);
+      pushVerts(id, mesh, idx);
+      const c = new THREE.Vector3(); geo.computeBoundingBox(); geo.boundingBox.getCenter(c); mesh.localToWorld(c);
+      const cs = centroids[id] = centroids[id] || {};
+      if (opts.side) cs[opts.side] = c; else cs.any = c;
+      return mesh;
+    }
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const E = (x, y, z) => new THREE.Euler(x, y, z);
+
+    // Cerebellum — bumpy ellipsoids with horizontal folia
+    for (const side of [-1, 1]) {
+      const geo = new THREE.SphereGeometry(1, 72, 52), pos = geo.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        const r = 1 - Math.abs(noise3(v.x * side * 2.4 + 1.3, v.y * 15, v.z * 2.4));
+        const s = 1 + (r - 0.5) * 0.07;
+        pos.setXYZ(i, v.x * s, v.y * s, v.z * s);
+      }
+      geo.computeVertexNormals();
+      addRegionMesh("cerebellum", geo, { position: V(side * 0.22, -0.5, -0.72), scale: V(0.31, 0.21, 0.28), side: side < 0 ? "left" : "right" });
+    }
+    // Brainstem — tapered column + pons bulge
+    addRegionMesh("brainstem", new THREE.CylinderGeometry(0.11, 0.075, 0.9, 28, 6), { position: V(0, -0.55, -0.24), rotation: E(0.36, 0, 0) });
+    addRegionMesh("brainstem", new THREE.SphereGeometry(0.13, 32, 24), { position: V(0, -0.43, -0.13), scale: V(1, 0.85, 1) });
+
+    // Deep structures
+    for (const side of [-1, 1]) {
+      const sd = side < 0 ? "left" : "right";
+      addRegionMesh("thalamus", new THREE.SphereGeometry(1, 32, 24), { position: V(side * 0.12, 0.02, -0.02), scale: V(0.13, 0.11, 0.19), deep: true, side: sd });
+      addRegionMesh("amygdala", new THREE.SphereGeometry(1, 24, 18), { position: V(side * 0.34, -0.2, 0.3), scale: V(0.075, 0.065, 0.08), deep: true, side: sd });
+      const hp = new THREE.CatmullRomCurve3([V(side * 0.36, -0.24, 0.16), V(side * 0.38, -0.22, -0.05), V(side * 0.34, -0.14, -0.25), V(side * 0.26, -0.02, -0.38)]);
+      addRegionMesh("hippocampus", new THREE.TubeGeometry(hp, 40, 0.05, 14, false), { deep: true, side: sd });
+    }
+    addRegionMesh("hypothalamus", new THREE.SphereGeometry(1, 28, 20), { position: V(0, -0.2, 0.12), scale: V(0.12, 0.07, 0.1), deep: true });
+    addRegionMesh("pituitary", new THREE.SphereGeometry(0.06, 24, 18), { position: V(0, -0.4, 0.2), deep: true });
+    addRegionMesh("pituitary", new THREE.CylinderGeometry(0.018, 0.018, 0.14, 12), { position: V(0, -0.31, 0.17), rotation: E(0.2, 0, 0), deep: true });
+    const cc = new THREE.CatmullRomCurve3([V(0, 0.06, 0.5), V(0, 0.28, 0.32), V(0, 0.38, 0.02), V(0, 0.3, -0.34), V(0, 0.1, -0.5)]);
+    addRegionMesh("corpus", new THREE.TubeGeometry(cc, 48, 0.05, 14, false), { scale: V(2.4, 1, 1), deep: true });
+
+    // ---- Colouring
+    let activeId = null, dimOthers = false, view = "lateral";
+    const tmp = new THREE.Color();
+    function baseColorFor(id) { return tmp.copy(TISSUE).lerp(col(byId[id].color), 0.6).clone(); }
+    function recolorCortex() {
+      for (const mesh of hemis) {
+        const ridx = mesh.geometry.attributes.ridx, color = mesh.geometry.attributes.color;
+        const palette = cortexRegions.map(id => {
+          const c = baseColorFor(id);
+          if (dimOthers && id !== activeId) c.lerp(DIM, 0.7);
+          return c;
+        });
+        for (let i = 0; i < ridx.count; i++) {
+          const c = palette[ridx.getX(i)];
+          color.setXYZ(i, c.r, c.g, c.b);
+        }
+        color.needsUpdate = true;
+      }
+    }
+    function recolorMeshes() {
+      for (const id in regionMeshes) for (const m of regionMeshes[id]) {
+        m.material.color.copy(col(byId[id].color));
+        if (dimOthers && id !== activeId) m.material.color.lerp(DIM, 0.7);
+        if (id !== activeId) m.material.emissiveIntensity = 0;
+      }
+    }
+    function pulseActive(t) {
+      if (!activeId) return;
+      const k = reduceMotion ? 0.7 : 0.55 + 0.45 * Math.sin(t * 6);
+      if (cortexRegions.includes(activeId)) {
+        const bright = col(byId[activeId].color).lerp(new THREE.Color(1, 1, 1), 0.25 * k);
+        for (const { mesh, indices } of regionVerts[activeId]) {
+          const color = mesh.geometry.attributes.color;
+          for (const i of indices) color.setXYZ(i, bright.r, bright.g, bright.b);
+          color.needsUpdate = true;
+        }
+      } else {
+        for (const m of regionMeshes[activeId]) m.material.emissiveIntensity = 0.25 + 0.55 * k;
+      }
+    }
+    function setActive(id, dim = false) { activeId = id; dimOthers = dim; recolorCortex(); recolorMeshes(); updateLabels(true); }
+    function clear() { activeId = null; dimOthers = false; recolorCortex(); recolorMeshes(); updateLabels(true); }
+    function setView(id) {
+      view = id;
+      const inside = id === "medial";
+      for (const m of hemis) { m.material.opacity = inside ? 0.14 : 1; m.material.depthWrite = !inside; }
+      for (const rid in regionMeshes) for (const m of regionMeshes[rid]) if (!m.userData.deep) { m.material.transparent = true; m.material.opacity = inside ? 0.35 : 1; m.material.depthWrite = !inside; }
+      updateLabels(true);
+    }
+
+    // ---- Neural sparks
+    const sparkSystems = [];
+    function sparks(id, count = 60) {
+      if (reduceMotion || !regionVerts[id]) return;
+      const pts = [], dirs = [];
+      const all = regionVerts[id];
+      for (let k = 0; k < count; k++) {
+        const { mesh, indices } = all[Math.floor(Math.random() * all.length)];
+        const i = indices[Math.floor(Math.random() * indices.length)];
+        const p = new THREE.Vector3().fromBufferAttribute(mesh.geometry.attributes.position, i);
+        mesh.localToWorld(p);
+        pts.push(p.x, p.y, p.z);
+        const d = p.clone().normalize().multiplyScalar(0.12 + Math.random() * 0.1);
+        dirs.push(d.x, d.y, d.z);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+      const mat = new THREE.PointsMaterial({ size: 0.045, color: 0xffffff, transparent: true, opacity: 1, depthTest: false });
+      const ps = new THREE.Points(geo, mat); ps.renderOrder = 20;
+      scene.add(ps);
+      sparkSystems.push({ ps, dirs, born: performance.now(), base: pts.slice() });
+    }
+    function tickSparks(now) {
+      for (let s = sparkSystems.length - 1; s >= 0; s--) {
+        const sys = sparkSystems[s], t = (now - sys.born) / 1100;
+        if (t >= 1) { scene.remove(sys.ps); sys.ps.geometry.dispose(); sys.ps.material.dispose(); sparkSystems.splice(s, 1); continue; }
+        const pos = sys.ps.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) pos.setXYZ(i, sys.base[i * 3] + sys.dirs[i * 3] * t, sys.base[i * 3 + 1] + sys.dirs[i * 3 + 1] * t, sys.base[i * 3 + 2] + sys.dirs[i * 3 + 2] * t);
+        pos.needsUpdate = true;
+        sys.ps.material.opacity = 1 - t;
+        sys.ps.material.size = 0.03 + 0.05 * (1 - t);
+      }
+    }
+
+    // ---- Orbit camera (drag / wheel / touch), auto-rotate
+    const orbit = { theta: -1.25, phi: 1.25, radius: 4.2, target: new THREE.Vector3(0, -0.15, 0) };
+    const HOME = { ...orbit, target: orbit.target.clone() };
+    let dragging = false, last = null, moved = 0, lastInput = 0, autoSpin = true;
+    function updateCamera() {
+      const { theta, phi, radius, target } = orbit;
+      camera.position.set(target.x + radius * Math.sin(phi) * Math.sin(theta), target.y + radius * Math.cos(phi), target.z + radius * Math.sin(phi) * Math.cos(theta));
+      camera.lookAt(target);
+    }
+    viewport.addEventListener("pointerdown", e => { dragging = true; moved = 0; last = [e.clientX, e.clientY]; viewport.setPointerCapture(e.pointerId); viewport.classList.add("dragging"); lastInput = performance.now(); });
+    viewport.addEventListener("pointermove", e => {
+      if (!dragging) return;
+      const dx = e.clientX - last[0], dy = e.clientY - last[1]; last = [e.clientX, e.clientY];
+      moved += Math.abs(dx) + Math.abs(dy);
+      orbit.theta -= dx * 0.008; orbit.phi = Math.min(2.9, Math.max(0.25, orbit.phi - dy * 0.008));
+      lastInput = performance.now();
+    });
+    viewport.addEventListener("pointerup", e => {
+      dragging = false; viewport.classList.remove("dragging");
+      if (moved < 6) pick(e);
+    });
+    viewport.addEventListener("pointercancel", () => { dragging = false; viewport.classList.remove("dragging"); });
+    viewport.addEventListener("wheel", e => { e.preventDefault(); orbit.radius = Math.min(6.5, Math.max(1.9, orbit.radius * (1 + Math.sign(e.deltaY) * 0.08))); lastInput = performance.now(); }, { passive: false });
+    $("#spinBtn").addEventListener("click", e => { autoSpin = !autoSpin; e.currentTarget.classList.toggle("on", autoSpin); });
+    $("#resetBtn").addEventListener("click", () => { Object.assign(orbit, { theta: HOME.theta, phi: HOME.phi, radius: HOME.radius }); });
+
+    // ---- Picking
+    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+    let onPick = () => {};
+    function pick(e) {
+      const rect = canvas.getBoundingClientRect();
+      ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      const targets = scene.children.filter(o => o.isMesh && (view === "lateral" || !o.userData.cortex));
+      const hits = ray.intersectObjects(targets, false);
+      if (!hits.length) return;
+      const h = hits[0];
+      const id = h.object.userData.region || cortexRegions[h.object.geometry.attributes.ridx.getX(h.face.a)];
+      onPick(id);
+    }
+
+    // ---- Labels (HTML, projected each frame)
+    let showLabels = true;
+    const labelEls = {};
+    for (const r of REGIONS) {
+      const el = document.createElement("div");
+      el.className = "lbl3d"; el.style.setProperty("--rc", r.color); el.textContent = r.name;
+      el.addEventListener("pointerdown", e => e.stopPropagation());
+      el.addEventListener("click", () => onPick(r.id));
+      labelsBox.appendChild(el); labelEls[r.id] = el;
+    }
+    $("#labelBtn").addEventListener("click", e => { showLabels = !showLabels; e.currentTarget.classList.toggle("on", showLabels); });
+    const proj = new THREE.Vector3(), camDir = new THREE.Vector3();
+    function updateLabels(force) {
+      const rect = canvas.getBoundingClientRect();
+      camDir.copy(camera.position).sub(orbit.target).normalize();
+      for (const r of REGIONS) {
+        const el = labelEls[r.id];
+        const deep = r.view === "medial";
+        let anchor;
+        const cs = centroids[r.id];
+        if (!cs) { el.hidden = true; continue; }
+        if (cs.any) anchor = cs.any;
+        else anchor = (camera.position.x < 0 ? cs.left : cs.right) || cs.left || cs.right;
+        const facing = anchor.clone().sub(orbit.target).normalize().dot(camDir);
+        const visible = showLabels && (deep ? view === "medial" : (view === "lateral" ? facing > 0.05 : r.id === activeId));
+        el.hidden = !visible;
+        if (!visible) continue;
+        proj.copy(anchor).project(camera);
+        el.style.left = ((proj.x + 1) / 2 * rect.width) + "px";
+        el.style.top = ((1 - proj.y) / 2 * rect.height) + "px";
+        el.classList.toggle("on", r.id === activeId);
+      }
+      // greedy de-overlap: push a label down until it clears the ones placed above it
+      const placed = [];
+      for (const el of Object.values(labelEls).filter(e => !e.hidden).sort((a, b) => parseFloat(a.style.top) - parseFloat(b.style.top))) {
+        const w = el.offsetWidth, h = el.offsetHeight;
+        let x = parseFloat(el.style.left) - w / 2, y = parseFloat(el.style.top) - h / 2;
+        for (const q of placed) {
+          if (x < q.x + q.w && x + w > q.x && y < q.y + q.h && y + h > q.y) y = q.y + q.h + 3;
+        }
+        el.style.top = (y + h / 2) + "px";
+        placed.push({ x, y, w, h });
+      }
+    }
+
+    // ---- Resize + render loop
+    function resize() {
+      const w = viewport.clientWidth, h = viewport.clientHeight;
+      if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
+        renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+      }
+    }
+    new ResizeObserver(resize).observe(viewport);
+    let prev = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+      if (autoSpin && !dragging && !reduceMotion && now - lastInput > 3500) orbit.theta += 0.18 * dt;
+      resize(); updateCamera(); pulseActive(now / 1000); tickSparks(now); updateLabels();
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    recolorCortex(); recolorMeshes(); resize(); updateCamera();
+    requestAnimationFrame(frame);
+
+    return { setView, setActive, clear, sparks, set onPick(fn) { onPick = fn; } };
+  })();
+
+  /* ============================ APP ============================ */
+  let mode = "explore", currentView = "lateral", activeId = null, scenarioTimer = null, typingTimer = null;
+
   const viewSeg = $("#viewSeg");
   for (const v of VIEWS) {
-    const b = document.createElement("button");
-    b.textContent = v.label;
-    b.dataset.view = v.id;
-    b.addEventListener("click", () => showView(v.id));
-    viewSeg.appendChild(b);
+    const b = document.createElement("button"); b.textContent = v.label; b.dataset.view = v.id;
+    b.addEventListener("click", () => showView(v.id)); viewSeg.appendChild(b);
   }
   function showView(id) {
     currentView = id;
-    $$(".view").forEach(s => s.classList.toggle("on", s.dataset.view === id));
     $$("#viewSeg button").forEach(b => b.classList.toggle("on", b.dataset.view === id));
     $("#viewTitle").textContent = VIEWS.find(v => v.id === id).title;
+    brain3d && brain3d.setView(id);
     renderLegend();
   }
   function renderLegend() {
-    const box = $("#legend");
-    box.innerHTML = "";
-    for (const r of REGIONS.filter(r => $(`.view[data-view="${currentView}"] [data-region="${r.id}"]`))) {
+    const box = $("#legend"); box.innerHTML = "";
+    for (const r of REGIONS.filter(r => currentView === "medial" ? true : r.view === "lateral")) {
       const b = document.createElement("button");
       b.innerHTML = `<span class="swatch" style="--rc:${r.color}"></span>${r.name}`;
-      b.addEventListener("click", () => selectRegion(r.id));
-      box.appendChild(b);
+      b.addEventListener("click", () => selectRegion(r.id)); box.appendChild(b);
     }
   }
 
-  // ---- Region selection + highlighting
-  function paths(id) { return $$(`[data-region="${id}"]`); }
-  function clearActive() {
-    $$("[data-region]").forEach(p => p.classList.remove("active", "dim"));
-  }
   function light(id, { dimOthers = false } = {}) {
-    clearActive();
     const r = byId[id];
-    if (r.view !== currentView && !$$(`.view.on [data-region="${id}"]`).length) showView(r.view);
-    paths(id).forEach(p => p.classList.add("active"));
-    if (dimOthers) $$("[data-region]").forEach(p => { if (p.dataset.region !== id) p.classList.add("dim"); });
+    if (r.view === "medial" && currentView !== "medial") showView("medial");
+    brain3d && brain3d.setActive(id, dimOthers);
     eeg.set(r);
   }
+  function clearActive() { brain3d && brain3d.clear(); }
+  function sparks(id) { brain3d && brain3d.sparks(id); }
   function selectRegion(id) {
     if (mode === "quiz") { quiz.answer(id); return; }
-    activeId = id;
-    light(id);
-    renderInfo(byId[id]);
+    if (mode === "scenario") return;
+    activeId = id; light(id); renderInfo(byId[id]);
   }
-
-  $("#brainbox").addEventListener("click", e => {
-    const p = e.target.closest("[data-region]");
-    if (p) selectRegion(p.dataset.region);
-  });
-  const tip = $("#tip");
-  $("#brainbox").addEventListener("mousemove", e => {
-    const p = e.target.closest("[data-region]");
-    if (!p) { tip.classList.remove("show"); return; }
-    const box = $("#brainbox").getBoundingClientRect();
-    tip.textContent = byId[p.dataset.region].name;
-    tip.style.left = (e.clientX - box.left) + "px";
-    tip.style.top = (e.clientY - box.top) + "px";
-    tip.classList.add("show");
-  });
-  $("#brainbox").addEventListener("mouseleave", () => tip.classList.remove("show"));
-  $$("[data-region]").forEach(p => {
-    p.setAttribute("tabindex", "0");
-    p.setAttribute("role", "button");
-    p.setAttribute("aria-label", byId[p.dataset.region].name);
-    p.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectRegion(p.dataset.region); }
-    });
-  });
-
-  // ---- Neural firing sparks inside a region's shape
-  function sparks(id, count = 14) {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const svg = $(".view.on");
-    const shape = svg.querySelector(`[data-region="${id}"]`);
-    if (!shape) return;
-    const geo = shape.tagName === "g" ? shape.querySelector("circle, path, ellipse") : shape;
-    const bb = geo.getBBox();
-    const pt = svg.createSVGPoint();
-    let made = 0, tries = 0;
-    while (made < count && tries < 300) {
-      tries++;
-      pt.x = bb.x + Math.random() * bb.width;
-      pt.y = bb.y + Math.random() * bb.height;
-      if (!geo.isPointInFill(pt)) continue;
-      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      c.setAttribute("class", "spark");
-      c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y); c.setAttribute("r", 1);
-      c.style.animationDelay = (Math.random() * 0.5) + "s";
-      svg.appendChild(c);
-      setTimeout(() => c.remove(), 1200);
-      made++;
-    }
-  }
+  if (brain3d) brain3d.onPick = selectRegion;
 
   // ---- Info card
   function renderInfo(r) {
-    const card = $("#infoCard");
-    card.innerHTML = `
-      <div class="eyebrow">${VIEWS.find(v => v.id === r.view).label} view</div>
+    $("#infoCard").innerHTML = `
+      <div class="eyebrow">${VIEWS.find(v => v.id === r.view).label}</div>
       <h2><span class="swatch" style="--rc:${r.color}"></span>${r.name}</h2>
       <p class="role">${r.role}</p>
       <h3>What it does</h3>
@@ -601,62 +776,44 @@
   }
   function stimulate(r) {
     light(r.id, { dimOthers: true });
-    sparks(r.id, 18);
-    const s2 = setTimeout(() => sparks(r.id, 12), 500);
-    const s3 = setTimeout(() => sparks(r.id, 10), 1000);
+    sparks(r.id); setTimeout(() => sparks(r.id), 450); setTimeout(() => sparks(r.id), 900);
     typeOut($("#output"), r.stimulate);
-    const btn = $("#stimBtn");
-    btn.disabled = true;
-    setTimeout(() => { btn.disabled = false; clearActive(); paths(r.id).forEach(p => p.classList.add("active")); }, 2600);
+    const btn = $("#stimBtn"); btn.disabled = true;
+    setTimeout(() => { btn.disabled = false; light(r.id); }, 2600);
   }
   function typeOut(el, text) {
-    clearInterval(typingTimer);
-    let i = 0;
+    clearInterval(typingTimer); let i = 0;
     el.innerHTML = '<span class="cursor"></span>';
     typingTimer = setInterval(() => {
-      i++;
-      el.innerHTML = text.slice(0, i).replace(/</g, "&lt;") + '<span class="cursor"></span>';
-      if (i >= text.length) { clearInterval(typingTimer); }
+      i++; el.innerHTML = text.slice(0, i).replace(/</g, "&lt;") + '<span class="cursor"></span>';
+      if (i >= text.length) clearInterval(typingTimer);
     }, 22);
   }
 
   // ---- Scenarios
   function renderScenarios() {
-    const card = $("#scenarioCard");
-    card.innerHTML = `<div class="eyebrow">Scenarios</div>
+    $("#scenarioCard").innerHTML = `<div class="eyebrow">Scenarios</div>
       <h2>Watch the brain work as a team</h2>
       <p class="role">Each scenario fires regions in order. The view switches automatically.</p>
-      <div class="list" id="scenList"></div>
-      <div class="steps" id="steps"></div>`;
+      <div class="list" id="scenList"></div><div class="steps" id="steps"></div>`;
     const list = $("#scenList");
     for (const s of SCENARIOS) {
-      const b = document.createElement("button");
-      b.className = "row";
+      const b = document.createElement("button"); b.className = "row";
       b.innerHTML = `<span style="flex:1">${s.name}<span class="sub">${s.steps.length} steps · ${s.steps.map(st => byId[st[0]].name.split(" ")[0]).join(" → ")}</span></span><span class="n">▶</span>`;
-      b.addEventListener("click", () => playScenario(s, b));
-      list.appendChild(b);
+      b.addEventListener("click", () => playScenario(s, b)); list.appendChild(b);
     }
   }
   function playScenario(s, rowBtn) {
     stopScenario();
     $$("#scenList .row").forEach(r => r.classList.toggle("on", r === rowBtn));
-    const stepsBox = $("#steps");
-    stepsBox.innerHTML = s.steps.map(([id, , cap], i) =>
-      `<div class="step" data-i="${i}"><span class="dot" style="--rc:${byId[id].color}"></span>${byId[id].name}: ${cap}</div>`).join("");
+    $("#steps").innerHTML = s.steps.map(([id, , cap], i) => `<div class="step" data-i="${i}"><span class="dot" style="--rc:${byId[id].color}"></span>${byId[id].name}: ${cap}</div>`).join("");
     let i = 0;
     const run = () => {
-      if (i >= s.steps.length) {
-        clearActive(); eeg.set(null);
-        $$("#steps .step").forEach(el => el.classList.add("done"));
-        return;
-      }
+      if (i >= s.steps.length) { clearActive(); eeg.set(null); $$("#steps .step").forEach(el => el.classList.add("done")); return; }
       const [id, ms] = s.steps[i];
-      light(id, { dimOthers: true });
-      sparks(id, 12);
-      $$("#steps .step").forEach(el => el.classList.toggle("on", +el.dataset.i === i));
-      $$("#steps .step").forEach(el => { if (+el.dataset.i < i) el.classList.add("done"); });
-      i++;
-      scenarioTimer = setTimeout(run, ms);
+      light(id, { dimOthers: true }); sparks(id);
+      $$("#steps .step").forEach(el => { el.classList.toggle("on", +el.dataset.i === i); if (+el.dataset.i < i) el.classList.add("done"); });
+      i++; scenarioTimer = setTimeout(run, ms);
     };
     run();
   }
@@ -665,97 +822,63 @@
   // ---- Quiz
   const quiz = {
     target: null, score: 0, asked: 0, pool: [],
-    start() {
-      this.score = 0; this.asked = 0;
-      this.pool = REGIONS.slice().sort(() => Math.random() - 0.5);
-      this.next();
-    },
+    start() { this.score = 0; this.asked = 0; this.pool = REGIONS.slice().sort(() => Math.random() - 0.5); this.next(); },
     next() {
       clearActive();
-      if (this.pool.length === 0) {
-        $("#quizCard").innerHTML = `<div class="eyebrow">Quiz</div><h2>All done</h2>
-          <p class="role">You scored ${this.score} of ${this.asked}.</p>
-          <button class="stim" id="quizAgain">Play again</button>`;
-        $("#quizAgain").addEventListener("click", () => this.start());
-        return;
+      if (!this.pool.length) {
+        $("#quizCard").innerHTML = `<div class="eyebrow">Quiz</div><h2>All done</h2><p class="role">You scored ${this.score} of ${this.asked}.</p><button class="stim" id="quizAgain">Play again</button>`;
+        $("#quizAgain").addEventListener("click", () => this.start()); return;
       }
-      this.target = this.pool.pop();
-      this.asked++;
+      this.target = this.pool.pop(); this.asked++;
       showView(this.target.view);
       $("#quizCard").innerHTML = `<div class="eyebrow">Quiz · question ${this.asked} of ${REGIONS.length}</div>
         <p class="quiz-q">Click the region that ${this.target.clue}.</p>
-        <p class="quiz-fb" id="quizFb">Hint: it is in the <b>${VIEWS.find(v => v.id === this.target.view).label.toLowerCase()}</b> view.</p>
+        <p class="quiz-fb" id="quizFb">Hint: it is in the <b>${VIEWS.find(v => v.id === this.target.view).label.toLowerCase()}</b> view. Rotate the brain to find it.</p>
         <div class="score">score ${this.score} / ${this.asked - 1}</div>`;
     },
     answer(id) {
       if (!this.target) return;
       const fb = $("#quizFb");
       if (id === this.target.id) {
-        this.score++;
-        fb.textContent = `Correct — the ${this.target.name.toLowerCase()}.`;
-        fb.className = "quiz-fb good";
-        light(id); sparks(id, 14);
-        const t = this.target; this.target = null;
-        setTimeout(() => this.next(), 1400);
-      } else {
-        fb.textContent = `That's the ${byId[id].name.toLowerCase()} — try again.`;
-        fb.className = "quiz-fb bad";
-      }
+        this.score++; fb.textContent = `Correct — the ${this.target.name.toLowerCase()}.`; fb.className = "quiz-fb good";
+        light(id); sparks(id); this.target = null; setTimeout(() => this.next(), 1400);
+      } else { fb.textContent = `That's the ${byId[id].name.toLowerCase()} — try again.`; fb.className = "quiz-fb bad"; }
     },
   };
 
   // ---- Modes
   $$("#modeSeg button").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
   function setMode(m) {
-    mode = m;
-    stopScenario();
-    clearActive();
+    mode = m; stopScenario(); clearActive();
     $$("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
-    $("#infoCard").hidden = m !== "explore";
-    $("#scenarioCard").hidden = m !== "scenario";
-    $("#quizCard").hidden = m !== "quiz";
-    if (m === "explore") { if (activeId) { light(activeId); } else eeg.set(null); }
+    $("#infoCard").hidden = m !== "explore"; $("#scenarioCard").hidden = m !== "scenario"; $("#quizCard").hidden = m !== "quiz";
+    if (m === "explore") { if (activeId) light(activeId); else eeg.set(null); }
     if (m === "scenario") { renderScenarios(); eeg.set(null); }
     if (m === "quiz") quiz.start();
   }
 
   // ---- Activity monitor (EEG-style trace)
   const eeg = (() => {
-    const cv = $("#eeg"), ctx = cv.getContext("2d");
+    const cv = $("#eeg"), ctx = cv.getContext("2d"), readout = $("#readout");
     let region = null, t = 0, buf = [];
-    const readout = $("#readout");
-    function set(r) {
-      region = r;
-      readout.innerHTML = r
-        ? `${r.name.toLowerCase()} · <b>~${r.hz} Hz</b> ${r.band}`
-        : `idle · <b>~10 Hz</b> alpha · resting`;
-    }
+    function set(r) { region = r; readout.innerHTML = r ? `${r.name.toLowerCase()} · <b>~${r.hz} Hz</b> ${r.band}` : `idle · <b>~10 Hz</b> alpha · resting`; }
     function sample() {
-      const hz = region ? region.hz : 10;
-      const amp = region ? 0.85 : 0.28;
-      const v = Math.sin(t * hz * 0.09) * amp
-        + Math.sin(t * 0.37) * 0.12
-        + (Math.random() - 0.5) * 0.16;
-      t++;
-      return v;
+      const hz = region ? region.hz : 10, amp = region ? 0.85 : 0.28;
+      return (t++, Math.sin(t * hz * 0.09) * amp + Math.sin(t * 0.37) * 0.12 + (Math.random() - 0.5) * 0.16);
     }
     function frame() {
-      const W = cv.clientWidth * devicePixelRatio, H = cv.height * devicePixelRatio;
+      const W = cv.clientWidth * devicePixelRatio, H = 90 * devicePixelRatio;
       if (cv.width !== W) { cv.width = W; cv.height = H; }
       for (let k = 0; k < 3; k++) buf.push(sample());
       if (buf.length > W / 2) buf.splice(0, buf.length - W / 2);
       ctx.clearRect(0, 0, W, H);
-      ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--line");
-      ctx.lineWidth = 1;
+      const cs = getComputedStyle(document.body);
+      ctx.strokeStyle = cs.getPropertyValue("--line"); ctx.lineWidth = 1;
       for (let x = 0; x < W; x += 40 * devicePixelRatio) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
       ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
-      ctx.strokeStyle = region ? region.color : getComputedStyle(document.body).getPropertyValue("--muted");
-      ctx.lineWidth = 2 * devicePixelRatio;
+      ctx.strokeStyle = region ? region.color : cs.getPropertyValue("--muted"); ctx.lineWidth = 2 * devicePixelRatio;
       ctx.beginPath();
-      buf.forEach((v, i) => {
-        const x = i * 2, y = H / 2 - v * H * 0.4;
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-      });
+      buf.forEach((v, i) => { const x = i * 2, y = H / 2 - v * H * 0.4; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
       ctx.stroke();
       requestAnimationFrame(frame);
     }
@@ -763,7 +886,7 @@
     return { set };
   })();
 
-  // ---- Boot: open on the frontal lobe so the page is alive at rest
+  // ---- Boot
   showView("lateral");
   selectRegion("frontal");
 </script>
