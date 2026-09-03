@@ -149,6 +149,23 @@
   .step.on { background: var(--ground); color: var(--ink); }
   .step.done { color: var(--ink); }
 
+  .simform { display: flex; gap: 8px; margin-top: 4px; }
+  .simform input {
+    flex: 1; min-width: 0; font: 500 0.95rem "IBM Plex Sans", sans-serif; color: var(--ink); background: var(--ground);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  }
+  .simform input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  .simform button { flex: none; font: 600 0.9rem "IBM Plex Sans", sans-serif; background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 0 16px; cursor: pointer; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { font: 500 0.78rem "IBM Plex Sans", sans-serif; color: var(--muted); background: var(--ground); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  .chip:hover { color: var(--ink); border-color: var(--accent); }
+  .why { font-size: 0.85rem; color: var(--muted); margin: 10px 0 0; }
+  .why b { color: var(--ink); font-weight: 500; }
+  .bars { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+  .bar { display: grid; grid-template-columns: 120px 1fr 38px; align-items: center; gap: 8px; font-size: 0.82rem; }
+  .bar .track { height: 8px; background: var(--ground); border-radius: 999px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--rc); border-radius: 999px; transition: width 0.6s ease; }
+  .bar .pct { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
   .quiz-q { font-family: "Sora", sans-serif; font-weight: 600; font-size: 1.05rem; margin: 0 0 6px; }
   .quiz-fb { min-height: 1.5em; color: var(--muted); }
   .quiz-fb.good { color: #2E9E5B; }
@@ -161,12 +178,12 @@
 
 <div class="wrap">
   <header>
-    <h1>Human Brain Simulator<small>Drag to rotate · Click a region · Stimulate it</small></h1>
+    <h1>Human Brain Simulator<small>Drag to rotate · Click a region · Type an action to simulate it</small></h1>
     <div class="toolbar">
       <div class="seg" id="viewSeg" role="group" aria-label="View"></div>
       <div class="seg" id="modeSeg" role="group" aria-label="Mode">
         <button data-mode="explore" class="on">Explore</button>
-        <button data-mode="scenario">Scenarios</button>
+        <button data-mode="simulate">Simulate</button>
         <button data-mode="quiz">Quiz</button>
       </div>
     </div>
@@ -199,7 +216,7 @@
 
     <aside class="panel">
       <div class="card info" id="infoCard"></div>
-      <div class="card info" id="scenarioCard" hidden></div>
+      <div class="card info" id="simCard" hidden></div>
       <div class="card info" id="quizCard" hidden></div>
     </aside>
   </main>
@@ -357,6 +374,80 @@
     ]},
   ];
 
+  /* ======================================================================
+     ACTION LEXICON — free-text simulation. Each entry: words that trigger it
+     (matched as word prefixes, so "run" also matches "running"), the regions
+     it recruits with a weight, and a label for the explanation.
+     Add a line here to teach the simulator a new kind of action.
+     ====================================================================== */
+  const LEXICON = [
+    { why: "visual input", r: { thalamus: 0.6, occipital: 1 },
+      k: ["see", "look", "watch", "stare", "eye", "color", "colour", "light", "picture", "screen", "tv", "movie", "video", "read", "face", "bright", "dark"] },
+    { why: "sound input", r: { thalamus: 0.6, temporal: 1 },
+      k: ["hear", "listen", "music", "song", "sound", "noise", "voice", "conversation", "bang", "loud", "podcast", "radio", "ear"] },
+    { why: "touch and body sense", r: { thalamus: 0.5, parietal: 1 },
+      k: ["touch", "feel", "hold", "grab", "pain", "hurt", "hot", "itch", "tickle", "texture", "hand", "finger", "soft", "rough", "massage"] },
+    { why: "smell, taste and appetite", r: { temporal: 0.6, hypothalamus: 0.7, amygdala: 0.3 },
+      k: ["smell", "sniff", "odor", "odour", "scent", "perfume", "taste", "flavor", "flavour", "eat", "food", "pizza", "chocolate", "drink", "coffee", "candy", "dinner", "lunch", "breakfast", "snack"] },
+    { why: "language (Wernicke's and Broca's areas)", r: { temporal: 0.9, frontal: 0.8 },
+      k: ["read", "word", "write", "speak", "say", "talk", "language", "sentence", "text", "letter", "book", "essay", "spanish", "english", "name", "chat", "argue", "explain", "story", "poem", "present"] },
+    { why: "reasoning and planning", r: { frontal: 1, parietal: 0.6 },
+      k: ["think", "plan", "decide", "choose", "solve", "problem", "math", "calculat", "count", "number", "logic", "puzzle", "chess", "study", "focus", "concentrat", "homework", "exam", "test", "strategy", "code", "program", "budget", "organize", "organise", "debate"] },
+    { why: "memory", r: { hippocampus: 1, temporal: 0.6 },
+      k: ["remember", "recall", "memor", "learn", "forget", "recogni", "familiar", "nostalgi", "childhood", "revise", "flashcard", "navigate", "directions", "map", "route", "way home"] },
+    { why: "emotion", r: { amygdala: 1, hypothalamus: 0.6, frontal: 0.4 },
+      k: ["scare", "scary", "fear", "afraid", "terrif", "panic", "spider", "snake", "horror", "danger", "threat", "nervous", "anxi", "stress", "worr", "angry", "anger", "rage", "fight", "cry", "sad", "happy", "joy", "excit", "love", "hug", "kiss", "laugh", "funny", "joke", "embarrass", "jealous", "surprise"] },
+    { why: "movement", r: { frontal: 1, cerebellum: 0.9, parietal: 0.6, brainstem: 0.4 },
+      k: ["run", "walk", "jump", "danc", "throw", "catch", "kick", "swim", "climb", "lift", "push", "pull", "punch", "type", "play", "piano", "guitar", "drum", "draw", "paint", "cook", "drive", "bike", "ride", "ski", "skate", "exercise", "workout", "gym", "sport", "soccer", "football", "basketball", "tennis", "juggl", "hit", "shoot", "build", "carry", "clean", "brush", "write", "text"] },
+    { why: "balance", r: { cerebellum: 1, brainstem: 0.5, parietal: 0.4 },
+      k: ["balanc", "stand", "posture", "dizzy", "spin", "coordinat", "yoga", "surf", "tightrope", "skateboard", "stairs", "trip", "stumble"] },
+    { why: "sleep and arousal", r: { hypothalamus: 1, thalamus: 0.7, brainstem: 0.8, hippocampus: 0.5 },
+      k: ["sleep", "nap", "tired", "dream", "yawn", "wake", "rest", "relax", "meditat", "bed", "doze", "drowsy"] },
+    { why: "life support and reflexes", r: { brainstem: 1, hypothalamus: 0.7 },
+      k: ["breath", "heart", "pulse", "blood", "swallow", "cough", "sneeze", "reflex", "blink", "sweat", "shiver", "temperature", "fever", "cold", "heat", "vomit", "hiccup"] },
+    { why: "hormones and drives", r: { hypothalamus: 1, pituitary: 0.9 },
+      k: ["hungry", "hunger", "thirst", "appetite", "diet", "hormone", "growth", "puberty", "pregnan", "adrenalin", "cortisol", "fasting", "craving"] },
+    { why: "two-sided coordination", r: { corpus: 1 },
+      k: ["both hands", "two hands", "clap", "juggl", "piano", "guitar", "drum", "left", "right", "coordinat", "tie", "knit", "type", "swim", "row", "climb"] },
+    { why: "singing (hearing, speech and breath)", r: { temporal: 0.9, frontal: 0.8, cerebellum: 0.5, brainstem: 0.4 },
+      k: ["sing", "hum", "whistle", "karaoke", "rap"] },
+    { why: "screen use", r: { occipital: 0.9, frontal: 0.8, amygdala: 0.4, hippocampus: 0.3 },
+      k: ["game", "gaming", "phone", "scroll", "tiktok", "instagram", "youtube", "netflix", "computer", "laptop"] },
+  ];
+  // Order regions fire in, and the caption each contributes to the playback.
+  const PHASE = { thalamus: 0, occipital: 1, temporal: 1, parietal: 1, hippocampus: 2, amygdala: 2, corpus: 2.5, hypothalamus: 2.6, pituitary: 2.7, frontal: 3, cerebellum: 4, brainstem: 4.5 };
+  const CAPTION = {
+    thalamus: "relays the incoming signals to the cortex",
+    occipital: "builds the picture of what you see",
+    temporal: "decodes sounds, words and what things are",
+    parietal: "tracks touch and where your body is in space",
+    hippocampus: "pulls up related memories and files new ones",
+    amygdala: "tags the moment with emotion",
+    corpus: "syncs the left and right hemispheres",
+    hypothalamus: "adjusts drives, hormones and body state",
+    pituitary: "releases hormones into the bloodstream",
+    frontal: "plans, decides and fires the motor commands",
+    cerebellum: "smooths and times every movement",
+    brainstem: "adjusts heart rate and breathing to match",
+  };
+  function simulateAction(text) {
+    const t = " " + text.toLowerCase().replace(/[^a-z' ]+/g, " ") + " ";
+    const weights = {}, matched = new Map();
+    for (const entry of LEXICON) {
+      const hits = entry.k.filter(k => new RegExp("\\b" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(t));
+      if (!hits.length) continue;
+      matched.set(entry.why, hits);
+      for (const id in entry.r) weights[id] = (weights[id] || 0) + entry.r[id];
+    }
+    const generic = matched.size === 0;
+    if (generic) Object.assign(weights, { thalamus: 0.5, parietal: 0.6, frontal: 1, cerebellum: 0.6 });
+    const max = Math.max(...Object.values(weights));
+    for (const id in weights) weights[id] = Math.round(weights[id] / max * 100) / 100;
+    const order = Object.keys(weights).sort((a, b) => PHASE[a] - PHASE[b] || weights[b] - weights[a]);
+    const steps = order.map(id => [id, 700 + 600 * weights[id], CAPTION[id]]);
+    return { weights, matched, generic, steps };
+  }
+
   /* ============================ helpers ============================ */
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
@@ -454,10 +545,10 @@
         const r2 = 1 - Math.abs(noise3(nx * 6.3 + 9.1, v.y * 6.3, v.z * 6.3));
         const wr = (r1 - 0.5) * 0.09 + (r2 - 0.5) * 0.035;
         const s = 1 + wr + tScore * 0.11;
-        let x = v.x * s * 0.5, y = v.y * s * 0.78, z = v.z * s * 1.12;
+        let x = v.x * s * 0.55, y = v.y * s * 0.78, z = v.z * s * 1.12;
         if (y < 0) y *= 0.82;
-        if (v.x * side < 0) x *= 0.55;                                // flatten the medial face
-        pos.setXYZ(i, x + side * 0.4, y, z);
+        if (v.x * side < 0) x *= 0.45;                                // flatten the medial face
+        pos.setXYZ(i, x + side * 0.27, y, z);                         // medial faces almost touch at the midline
       }
       geo.setAttribute("ridx", new THREE.BufferAttribute(ridx, 1));
       geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
@@ -528,17 +619,23 @@
     addRegionMesh("corpus", new THREE.TubeGeometry(cc, 48, 0.05, 14, false), { scale: V(2.4, 1, 1), deep: true });
 
     // ---- Colouring
-    let activeId = null, dimOthers = false, view = "lateral";
-    const tmp = new THREE.Color();
+    let activeId = null, dimOthers = false, view = "lateral", activity = null;
+    const tmp = new THREE.Color(), WHITE = new THREE.Color(1, 1, 1);
     function baseColorFor(id) { return tmp.copy(TISSUE).lerp(col(byId[id].color), 0.6).clone(); }
+    // resting colour of a region given the current activity map / dimming state
+    function restColor(id) {
+      const c = baseColorFor(id);
+      if (activity) {
+        const w = activity[id] || 0;
+        return w > 0 ? c.lerp(col(byId[id].color).lerp(WHITE, 0.15), 0.85 * w) : c.lerp(DIM, 0.6);
+      }
+      if (dimOthers && id !== activeId) c.lerp(DIM, 0.7);
+      return c;
+    }
     function recolorCortex() {
       for (const mesh of hemis) {
         const ridx = mesh.geometry.attributes.ridx, color = mesh.geometry.attributes.color;
-        const palette = cortexRegions.map(id => {
-          const c = baseColorFor(id);
-          if (dimOthers && id !== activeId) c.lerp(DIM, 0.7);
-          return c;
-        });
+        const palette = cortexRegions.map(restColor);
         for (let i = 0; i < ridx.count; i++) {
           const c = palette[ridx.getX(i)];
           color.setXYZ(i, c.r, c.g, c.b);
@@ -549,8 +646,9 @@
     function recolorMeshes() {
       for (const id in regionMeshes) for (const m of regionMeshes[id]) {
         m.material.color.copy(col(byId[id].color));
-        if (dimOthers && id !== activeId) m.material.color.lerp(DIM, 0.7);
-        if (id !== activeId) m.material.emissiveIntensity = 0;
+        if (activity) { const w = activity[id] || 0; if (!w) m.material.color.lerp(DIM, 0.6); }
+        else if (dimOthers && id !== activeId) m.material.color.lerp(DIM, 0.7);
+        if (id !== activeId) m.material.emissiveIntensity = activity ? 0.5 * (activity[id] || 0) : 0;
       }
     }
     function pulseActive(t) {
@@ -568,7 +666,8 @@
       }
     }
     function setActive(id, dim = false) { activeId = id; dimOthers = dim; recolorCortex(); recolorMeshes(); updateLabels(true); }
-    function clear() { activeId = null; dimOthers = false; recolorCortex(); recolorMeshes(); updateLabels(true); }
+    function setActivity(map) { activity = map; activeId = null; dimOthers = false; recolorCortex(); recolorMeshes(); updateLabels(true); }
+    function clear() { activeId = null; dimOthers = false; activity = null; recolorCortex(); recolorMeshes(); updateLabels(true); }
     function setView(id) {
       view = id;
       const inside = id === "medial";
@@ -676,7 +775,8 @@
         if (cs.any) anchor = cs.any;
         else anchor = (camera.position.x < 0 ? cs.left : cs.right) || cs.left || cs.right;
         const facing = anchor.clone().sub(orbit.target).normalize().dot(camDir);
-        const visible = showLabels && (deep ? view === "medial" : (view === "lateral" ? facing > 0.05 : r.id === activeId));
+        const lit = r.id === activeId || (activity && activity[r.id] > 0);
+        const visible = showLabels && (deep ? (view === "medial" || lit) : (view === "lateral" ? facing > 0.05 : (r.id === activeId || lit)));
         el.hidden = !visible;
         if (!visible) continue;
         proj.copy(anchor).project(camera);
@@ -716,7 +816,7 @@
     recolorCortex(); recolorMeshes(); resize(); updateCamera();
     requestAnimationFrame(frame);
 
-    return { setView, setActive, clear, sparks, set onPick(fn) { onPick = fn; } };
+    return { setView, setActive, setActivity, clear, sparks, set onPick(fn) { onPick = fn; } };
   })();
 
   /* ============================ APP ============================ */
@@ -753,7 +853,7 @@
   function sparks(id) { brain3d && brain3d.sparks(id); }
   function selectRegion(id) {
     if (mode === "quiz") { quiz.answer(id); return; }
-    if (mode === "scenario") return;
+    if (mode === "simulate") return;
     activeId = id; light(id); renderInfo(byId[id]);
   }
   if (brain3d) brain3d.onPick = selectRegion;
@@ -790,28 +890,62 @@
     }, 22);
   }
 
-  // ---- Scenarios
-  function renderScenarios() {
-    $("#scenarioCard").innerHTML = `<div class="eyebrow">Scenarios</div>
-      <h2>Watch the brain work as a team</h2>
-      <p class="role">Each scenario fires regions in order. The view switches automatically.</p>
-      <div class="list" id="scenList"></div><div class="steps" id="steps"></div>`;
-    const list = $("#scenList");
+  // ---- Simulate: free text → regions, plus the scripted scenarios as examples
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function renderSimulate() {
+    $("#simCard").innerHTML = `<div class="eyebrow">Simulate</div>
+      <h2>What are you doing?</h2>
+      <p class="role">Type any action. The simulator works out which regions it recruits and fires them in order.</p>
+      <form class="simform" id="simForm"><input id="simInput" placeholder="e.g. playing piano while nervous" autocomplete="off"><button type="submit">Simulate</button></form>
+      <div class="chips" id="simChips"></div>
+      <div id="simOut"></div>`;
+    const chips = $("#simChips");
     for (const s of SCENARIOS) {
-      const b = document.createElement("button"); b.className = "row";
-      b.innerHTML = `<span style="flex:1">${s.name}<span class="sub">${s.steps.length} steps · ${s.steps.map(st => byId[st[0]].name.split(" ")[0]).join(" → ")}</span></span><span class="n">▶</span>`;
-      b.addEventListener("click", () => playScenario(s, b)); list.appendChild(b);
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = s.name;
+      b.addEventListener("click", () => { $("#simInput").value = s.name; runScripted(s); }); chips.appendChild(b);
     }
+    for (const ex of ["eating pizza", "running from a spider", "doing math homework", "texting a friend"]) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = ex;
+      b.addEventListener("click", () => { $("#simInput").value = ex; runFreeText(ex); }); chips.appendChild(b);
+    }
+    $("#simForm").addEventListener("submit", e => { e.preventDefault(); const v = $("#simInput").value.trim(); if (v) runFreeText(v); });
+    setTimeout(() => $("#simInput").focus(), 50);
   }
-  function playScenario(s, rowBtn) {
+  function runFreeText(text) {
+    const sim = simulateAction(text);
+    const reasons = sim.generic
+      ? `No specific keywords recognised — showing the general pathway for a deliberate action. Add words to <b>LEXICON</b> to teach it.`
+      : "Triggered by " + [...sim.matched].map(([why, hits]) => `<b>${why}</b> (${hits.map(h => `"${h}"`).join(", ")})`).join(", ") + ".";
+    renderSimResult(`Simulating: ${esc(text)}`, reasons, sim.weights, sim.steps);
+  }
+  function runScripted(s) {
+    const weights = {};
+    s.steps.forEach(([id], i) => { weights[id] = Math.max(weights[id] || 0, 1 - i * 0.12); });
+    renderSimResult(s.name, "Scripted scenario — hand-written steps.", weights, s.steps);
+  }
+  function renderSimResult(title, reasons, weights, steps) {
+    const ids = Object.keys(weights).sort((a, b) => weights[b] - weights[a]);
+    $("#simOut").innerHTML = `
+      <h3 style="margin-top:16px">${title}</h3>
+      <p class="why">${reasons}</p>
+      <div class="bars">${ids.map(id => `<div class="bar"><span>${byId[id].name}</span><div class="track"><div class="fill" style="--rc:${byId[id].color};width:0%" data-w="${Math.round(weights[id] * 100)}"></div></div><span class="pct">${Math.round(weights[id] * 100)}%</span></div>`).join("")}</div>
+      <div class="steps" id="steps"></div>
+      <button class="stim" id="replayBtn" style="margin-top:12px">▶ Play again</button>`;
+    requestAnimationFrame(() => $$("#simOut .fill").forEach(f => f.style.width = f.dataset.w + "%"));
+    $("#replayBtn").addEventListener("click", () => playSequence(steps, weights));
+    playSequence(steps, weights);
+  }
+  function playSequence(steps, weights) {
     stopScenario();
-    $$("#scenList .row").forEach(r => r.classList.toggle("on", r === rowBtn));
-    $("#steps").innerHTML = s.steps.map(([id, , cap], i) => `<div class="step" data-i="${i}"><span class="dot" style="--rc:${byId[id].color}"></span>${byId[id].name}: ${cap}</div>`).join("");
+    const needsInside = steps.some(([id]) => byId[id].view === "medial");
+    if (needsInside && currentView !== "medial") showView("medial");
+    brain3d && brain3d.setActivity(weights);
+    $("#steps").innerHTML = steps.map(([id, , cap], i) => `<div class="step" data-i="${i}"><span class="dot" style="--rc:${byId[id].color}"></span>${byId[id].name}: ${cap}</div>`).join("");
     let i = 0;
     const run = () => {
-      if (i >= s.steps.length) { clearActive(); eeg.set(null); $$("#steps .step").forEach(el => el.classList.add("done")); return; }
-      const [id, ms] = s.steps[i];
-      light(id, { dimOthers: true }); sparks(id);
+      if (i >= steps.length) { brain3d && brain3d.setActivity(weights); eeg.set(null); $$("#steps .step").forEach(el => el.classList.add("done")); return; }
+      const [id, ms] = steps[i];
+      brain3d && brain3d.setActive(id); eeg.set(byId[id]); sparks(id);
       $$("#steps .step").forEach(el => { el.classList.toggle("on", +el.dataset.i === i); if (+el.dataset.i < i) el.classList.add("done"); });
       i++; scenarioTimer = setTimeout(run, ms);
     };
@@ -851,9 +985,9 @@
   function setMode(m) {
     mode = m; stopScenario(); clearActive();
     $$("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
-    $("#infoCard").hidden = m !== "explore"; $("#scenarioCard").hidden = m !== "scenario"; $("#quizCard").hidden = m !== "quiz";
+    $("#infoCard").hidden = m !== "explore"; $("#simCard").hidden = m !== "simulate"; $("#quizCard").hidden = m !== "quiz";
     if (m === "explore") { if (activeId) light(activeId); else eeg.set(null); }
-    if (m === "scenario") { renderScenarios(); eeg.set(null); }
+    if (m === "simulate") { renderSimulate(); eeg.set(null); }
     if (m === "quiz") quiz.start();
   }
 

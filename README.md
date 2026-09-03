@@ -18,10 +18,13 @@ CDN — no model files, no build step). Open it in a browser.
   a fact. **Stimulate** fires it: the region glows and pulses, neurons spark
   out of its surface, the activity monitor switches to that region's rhythm,
   and an output log reports what the body does.
-- **Scenarios** — "Catching a ball", "A sudden loud bang", "Falling asleep"...
-  fire regions in sequence so you can watch the brain work as a system. The
-  view switches automatically as the sequence moves between surface and deep
-  structures.
+- **Simulate** — type any action ("playing piano while nervous", "running
+  from a spider"). A keyword lexicon works out which regions it recruits and
+  how strongly, shows them as a heat-map on the brain with intensity bars,
+  and fires them in order (sense → memory/emotion → decide → move). Scripted
+  scenarios ("Catching a ball", "A sudden loud bang", "Falling asleep"...) are
+  one click away as examples. The view switches automatically as the
+  sequence moves between surface and deep structures.
 - **Quiz** — "Click the region that keeps your heart beating while you sleep."
 
 Regions covered: frontal, parietal, temporal and occipital lobes, cerebellum,
@@ -37,6 +40,7 @@ Three registries at the bottom of `index.html` define everything:
 | `VIEWS`     | Surface (opaque cortex) and Inside (translucent cortex)           |
 | `REGIONS`   | Every clickable structure: text, colour, rhythm, quiz clue        |
 | `SCENARIOS` | Ordered lists of regions firing, with a caption per step          |
+| `LEXICON`   | Words → regions + weights for the free-text Simulate mode         |
 
 The legend, info panel, activity monitor, scenario list and quiz are all
 generated from these — nothing is hard-coded in the UI.
@@ -54,6 +58,20 @@ generated from these — nothing is hard-coded in the UI.
 - Cerebellum, brainstem and the deep structures are separate meshes
   (ellipsoids, a tapered cylinder, tube geometry swept along curves) tagged
   with their region id.
+
+### Teach the simulator a new action
+
+Add a line to `LEXICON`: the words that trigger it (matched as word
+prefixes, so `"run"` also matches "running"), the regions it recruits with a
+0–1 weight, and a short label used in the explanation:
+
+```js
+{ why: "playing an instrument", r: { frontal: 1, cerebellum: 0.9, temporal: 0.8, corpus: 0.7 },
+  k: ["violin", "flute", "trumpet", "orchestra"] },
+```
+
+`PHASE` decides the firing order and `CAPTION` the line each region
+contributes to the playback.
 
 ### Add a brain region
 
