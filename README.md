@@ -3,42 +3,53 @@ For COP 4655
 
 I am a senior at FAU
 
-## Body Parts Buddy
+## Human Brain Simulator
 
-An interactive body-parts animation: **Bo**, a cartoon character whose body
-parts each animate when you tap them (wave arms, wiggle ears, boop the nose,
-stomp feet...). It has two modes:
+An interactive brain simulator in a single `index.html` (no build step, no
+dependencies). Open it in a browser.
 
-- **Explore** — tap any part; Bo animates it, announces it in a speech
-  bubble, and says it out loud (Web Speech API).
-- **Find it!** — a quiz: "Where is my tummy?" Tap the right part to score.
+- **Explore** — click any region in the *Outside* (lateral) or *Inside*
+  (medial) view. The panel shows what it does, what happens when it is
+  damaged, and a fact. **Stimulate** fires the region: it lights up, neurons
+  spark inside it, the activity monitor switches to that region's rhythm, and
+  an output log reports what the body does.
+- **Scenarios** — "Catching a ball", "A sudden loud bang", "Falling asleep"...
+  fire regions in sequence so you can watch the brain work as a system. The
+  view switches automatically as the sequence moves between surface and deep
+  structures.
+- **Quiz** — "Click the region that keeps your heart beating while you sleep."
 
-Open `index.html` in a browser — no build step, no dependencies.
+Regions covered: frontal, parietal, temporal and occipital lobes, cerebellum,
+brainstem, corpus callosum, thalamus, hypothalamus, pituitary gland,
+hippocampus, amygdala.
 
-### How to add a new body part
+### How it is built
 
-Everything is driven by the `PARTS` registry in `index.html`. Three steps:
+Three registries at the bottom of `index.html` define everything:
 
-1. **Draw it** — add a group inside the SVG:
-   ```html
-   <g data-part="knees" tabindex="0" role="button" aria-label="Knees">
-     <circle cx="179" cy="452" r="10" fill="var(--sun)"/>
-     <circle cx="241" cy="452" r="10" fill="var(--sun)"/>
-   </g>
-   ```
-2. **Register it** — add one entry to the `PARTS` array (the `id` must match
-   `data-part`):
-   ```js
-   { id: "knees", label: "Knees", anim: "bend", say: "I bend my knees!" },
-   ```
-3. **Animate it** — add a CSS class named `anim-<your anim>`:
-   ```css
-   .anim-bend { animation: bend 0.8s ease; transform-origin: 210px 452px; }
-   @keyframes bend {
-     0%, 100% { transform: translateY(0); }
-     50% { transform: translateY(-14px); }
-   }
-   ```
+| Registry    | What it holds                                                     |
+| ----------- | ----------------------------------------------------------------- |
+| `VIEWS`     | The drawings you can switch between (each is one SVG in the page) |
+| `REGIONS`   | Every clickable structure: text, colour, rhythm, quiz clue        |
+| `SCENARIOS` | Ordered lists of regions firing, with a caption per step          |
 
-The part chip, the quiz round, the highlight, and the voice line are all
-generated from the registry automatically.
+The legend, info panel, activity monitor, scenario list and quiz are all
+generated from these — nothing is hard-coded in the UI.
+
+### Add a brain region
+
+1. Draw it as `<path data-region="broca" style="--rc:#hex" d="..."/>` inside
+   the SVG for the view it belongs to.
+2. Add a `REGIONS` entry with `id: "broca"` and the same `view`.
+3. Optionally reference it from a scenario step: `["broca", 1200, "caption"]`.
+
+### Add a different body part (heart, lungs, eye...)
+
+The same pattern scales past the brain:
+
+1. Add `{ id: "heart", label: "Heart", title: "..." }` to `VIEWS`.
+2. Add an `<svg class="view" data-view="heart" viewBox="...">` next to the
+   brain SVGs, with `data-region` shapes for the atria, ventricles, valves...
+3. Add `REGIONS` entries with `view: "heart"`.
+4. Scenarios can now cross organs: an "Exercise" scenario could fire the
+   motor cortex, then the brainstem, then the heart's sinoatrial node.

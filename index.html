@@ -3,348 +3,232 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Body Parts Buddy</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap">
+<title>Human Brain Simulator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-  /* ============================================================
-     Body Parts Buddy — an expandable body-parts animation.
-     Every body part lives in the PARTS registry (bottom of file).
-     To add a part: (1) draw a <g data-part="..."> in the SVG,
-     (2) add an entry to PARTS, (3) add a keyframe animation here.
-     ============================================================ */
-
+  /* ==========================================================================
+     Human Brain Simulator
+     Data-driven: VIEWS, REGIONS and SCENARIOS (bottom of file) define the app.
+     To add a new body part (heart, lungs, ...): add a VIEW, draw an SVG with
+     <path data-region="..."> shapes for it, and add REGIONS with view: "<id>".
+     ========================================================================== */
   :root {
-    --ground: #F0F7F2;
+    --ground: #EEF1F5;
     --panel: #FFFFFF;
-    --ink: #20423B;
-    --muted: #5F7A72;
-    --line: #D8E7DF;
-    --teal: #3BA99C;
-    --teal-deep: #2C8177;
-    --coral: #FF6B57;
-    --sun: #FFC24B;
-    --good: #2E9E5B;
-    --shadow: 0 10px 30px rgba(32, 66, 59, 0.10);
+    --ink: #1B2430;
+    --muted: #5C6B7A;
+    --line: #D5DCE5;
+    --tissue: #E9C3C6;
+    --tissue-line: #C98F95;
+    --monitor: #F7F9FB;
+    --shadow: 0 8px 28px rgba(27, 36, 48, 0.08);
+    --accent: #2F6FED;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --ground: #12251F;
-      --panel: #1B342C;
-      --ink: #EAF6F0;
-      --muted: #9CBCAF;
-      --line: #2C4A3F;
-      --teal: #46B8AA;
-      --teal-deep: #338B7E;
-      --coral: #FF7B67;
-      --sun: #FFCB5E;
-      --good: #4CC178;
-      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --ground: #131920;
+      --panel: #1B232D;
+      --ink: #E8EDF3;
+      --muted: #98A6B5;
+      --line: #2B3641;
+      --tissue: #4A3A40;
+      --tissue-line: #6E525A;
+      --monitor: #10161C;
+      --shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+      --accent: #6C9BFF;
     }
   }
   :root[data-theme="dark"] {
-    --ground: #12251F;
-    --panel: #1B342C;
-    --ink: #EAF6F0;
-    --muted: #9CBCAF;
-    --line: #2C4A3F;
-    --teal: #46B8AA;
-    --teal-deep: #338B7E;
-    --coral: #FF7B67;
-    --sun: #FFCB5E;
-    --good: #4CC178;
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --ground: #131920;
+    --panel: #1B232D;
+    --ink: #E8EDF3;
+    --muted: #98A6B5;
+    --line: #2B3641;
+    --tissue: #4A3A40;
+    --tissue-line: #6E525A;
+    --monitor: #10161C;
+    --shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+    --accent: #6C9BFF;
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
+    margin: 0;
     background: var(--ground);
     color: var(--ink);
-    font-family: "Nunito", "Segoe UI", system-ui, sans-serif;
-    margin: 0;
-    min-height: 100vh;
+    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
   }
-  .wrap {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 20px 20px 48px;
-  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 18px 20px 40px; }
 
   header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-    padding: 4px 0 18px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 14px; padding-bottom: 16px;
   }
   h1 {
-    font-family: "Baloo 2", "Nunito", sans-serif;
-    font-weight: 800;
-    font-size: clamp(1.7rem, 4vw, 2.4rem);
-    margin: 0;
-    letter-spacing: 0.5px;
-    text-wrap: balance;
+    font-family: "Sora", sans-serif; font-weight: 700;
+    font-size: clamp(1.3rem, 2.6vw, 1.7rem); margin: 0; letter-spacing: -0.01em;
   }
-  h1 .dot { color: var(--coral); }
-  .controls { display: flex; gap: 10px; align-items: center; }
-  .mode-switch {
-    display: flex;
-    background: var(--panel);
-    border: 2px solid var(--line);
-    border-radius: 999px;
-    padding: 4px;
-    gap: 4px;
+  h1 small {
+    display: block; font-family: "IBM Plex Mono", monospace; font-weight: 400;
+    font-size: 0.72rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
+    margin-top: 2px;
   }
-  .mode-switch button {
-    font-family: "Baloo 2", sans-serif;
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: var(--muted);
-    background: transparent;
-    border: none;
-    border-radius: 999px;
-    padding: 7px 18px;
-    cursor: pointer;
+  .seg {
+    display: inline-flex; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 3px; gap: 2px;
   }
-  .mode-switch button.on {
-    background: var(--teal);
-    color: #fff;
+  .seg button {
+    font: 500 0.85rem "IBM Plex Sans", sans-serif; color: var(--muted);
+    background: transparent; border: 0; border-radius: 7px; padding: 6px 13px; cursor: pointer;
   }
-  .sound-btn {
-    background: var(--panel);
-    border: 2px solid var(--line);
-    border-radius: 999px;
-    width: 44px; height: 44px;
-    font-size: 1.15rem;
-    cursor: pointer;
-  }
-  button:focus-visible {
-    outline: 3px solid var(--sun);
-    outline-offset: 2px;
-  }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  main {
-    display: grid;
-    grid-template-columns: 1.25fr 1fr;
-    gap: 20px;
-    align-items: start;
-  }
-  @media (max-width: 760px) {
-    main { grid-template-columns: 1fr; }
-  }
+  main { display: grid; grid-template-columns: 1.45fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
 
-  /* ---------- Stage ---------- */
-  .stage {
-    background: var(--panel);
-    border: 2px solid var(--line);
-    border-radius: 24px;
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
     box-shadow: var(--shadow);
-    padding: 18px 18px 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
   }
-  .bubble {
-    font-family: "Baloo 2", sans-serif;
-    font-weight: 700;
-    font-size: clamp(1.15rem, 2.6vw, 1.5rem);
-    background: var(--sun);
-    color: #4A3200;
-    border-radius: 18px;
-    padding: 12px 22px;
-    position: relative;
-    text-align: center;
-    min-height: 3.2em;
-    display: flex;
-    align-items: center;
-    max-width: 92%;
+  .stage { padding: 14px 14px 10px; position: relative; }
+  .stage-top {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 0 4px 6px;
   }
-  .bubble::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: -10px;
-    transform: translateX(-50%);
-    border: 11px solid transparent;
-    border-top-color: var(--sun);
-    border-bottom: none;
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
   }
-  .bubble.pop { animation: bubblePop 0.35s ease; }
-  @keyframes bubblePop {
-    0% { transform: scale(0.92); }
-    60% { transform: scale(1.04); }
-    100% { transform: scale(1); }
-  }
-
-  figure.bo { margin: 6px 0 0; width: min(100%, 380px); position: relative; }
+  .brainbox { position: relative; }
+  .view { display: none; }
+  .view.on { display: block; }
   svg { width: 100%; height: auto; display: block; }
 
-  [data-part] { cursor: pointer; }
-  [data-part].lit { filter: drop-shadow(0 0 7px var(--sun)) drop-shadow(0 0 2px var(--sun)); }
-
-  .character { animation: bob 3.2s ease-in-out infinite; transform-origin: 210px 350px; }
-  @keyframes bob {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(5px); }
-  }
-  .character.shake { animation: shake 0.4s ease; }
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-7px); }
-    75% { transform: translateX(7px); }
-  }
-
-  /* ---------- Per-part animations ----------
-     Each part's `anim` in PARTS maps to a class "anim-<name>".
-     Transform origins are in SVG user units (viewBox 0 0 420 520). */
-  .anim-nod { animation: nod 0.9s ease; transform-origin: 210px 245px; }
-  @keyframes nod {
-    0%, 100% { transform: rotate(0); }
-    25% { transform: rotate(-8deg); }
-    65% { transform: rotate(7deg); }
-  }
-  .anim-blink #pupils { animation: blink 0.7s ease 2; transform-origin: 210px 140px; }
-  @keyframes blink {
-    0%, 100% { transform: scaleY(1); }
-    50% { transform: scaleY(0.08); }
-  }
-  .anim-wiggle .ear-l { animation: earL 0.8s ease; transform-origin: 118px 155px; }
-  .anim-wiggle .ear-r { animation: earR 0.8s ease; transform-origin: 302px 155px; }
-  @keyframes earL {
-    0%, 100% { transform: rotate(0); }
-    30% { transform: rotate(-18deg); }
-    70% { transform: rotate(12deg); }
-  }
-  @keyframes earR {
-    0%, 100% { transform: rotate(0); }
-    30% { transform: rotate(18deg); }
-    70% { transform: rotate(-12deg); }
-  }
-  .anim-boop { animation: boop 0.6s ease; transform-origin: 210px 172px; }
-  @keyframes boop {
-    0%, 100% { transform: scale(1); }
-    40% { transform: scale(1.6); }
-  }
-  .anim-chomp { animation: chomp 0.8s ease; transform-origin: 210px 202px; }
-  @keyframes chomp {
-    0%, 100% { transform: scaleY(1); }
-    30% { transform: scaleY(1.8); }
-    60% { transform: scaleY(0.5); }
-  }
-  .anim-wave .arm-l { animation: waveL 1s ease; transform-origin: 128px 315px; }
-  .anim-wave .arm-r { animation: waveR 1s ease; transform-origin: 292px 315px; }
-  @keyframes waveL {
-    0%, 100% { transform: rotate(0); }
-    30% { transform: rotate(150deg); }
-    50% { transform: rotate(120deg); }
-    70% { transform: rotate(150deg); }
-  }
-  @keyframes waveR {
-    0%, 100% { transform: rotate(0); }
-    30% { transform: rotate(-150deg); }
-    50% { transform: rotate(-120deg); }
-    70% { transform: rotate(-150deg); }
-  }
-  .anim-clap .hand-l { animation: clapL 0.8s ease; }
-  .anim-clap .hand-r { animation: clapR 0.8s ease; }
-  @keyframes clapL {
-    0%, 100% { transform: translate(0, 0); }
-    30%, 60% { transform: translate(55px, -30px); }
-    45%, 75% { transform: translate(35px, -20px); }
-  }
-  @keyframes clapR {
-    0%, 100% { transform: translate(0, 0); }
-    30%, 60% { transform: translate(-55px, -30px); }
-    45%, 75% { transform: translate(-35px, -20px); }
-  }
-  .anim-jiggle { animation: jiggle 0.7s ease; transform-origin: 210px 370px; }
-  @keyframes jiggle {
-    0%, 100% { transform: scale(1); }
-    25% { transform: scale(1.12, 0.9); }
-    50% { transform: scale(0.92, 1.1); }
-    75% { transform: scale(1.06, 0.96); }
-  }
-  .anim-march .leg-l { animation: stepUp 0.8s ease; }
-  .anim-march .leg-r { animation: stepUp 0.8s ease 0.4s; }
-  .anim-stomp .foot-l { animation: stepUp 0.7s ease; }
-  .anim-stomp .foot-r { animation: stepUp 0.7s ease 0.35s; }
-  @keyframes stepUp {
-    0%, 100% { transform: translateY(0); }
-    40% { transform: translateY(-26px); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .character, .character *, .bubble { animation: none !important; }
-  }
-
-  /* ---------- Side panel ---------- */
-  .panel { display: flex; flex-direction: column; gap: 20px; }
-  .card {
-    background: var(--panel);
-    border: 2px solid var(--line);
-    border-radius: 24px;
-    box-shadow: var(--shadow);
-    padding: 20px;
-  }
-  .card h2 {
-    font-family: "Baloo 2", sans-serif;
-    font-weight: 700;
-    font-size: 1.15rem;
-    margin: 0 0 12px;
-  }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip {
-    font-family: "Baloo 2", sans-serif;
-    font-weight: 700;
-    font-size: 0.95rem;
-    color: var(--ink);
-    background: var(--ground);
-    border: 2px solid var(--line);
-    border-radius: 999px;
-    padding: 7px 16px;
+  /* Brain drawing */
+  .tissue { fill: var(--tissue); stroke: var(--tissue-line); stroke-width: 2; }
+  .gyri { fill: none; stroke: var(--tissue-line); stroke-width: 1.6; opacity: 0.55; pointer-events: none; }
+  [data-region] {
     cursor: pointer;
-    transition: transform 0.12s ease, border-color 0.12s ease;
+    fill: var(--rc);
+    fill-opacity: 0.28;
+    stroke: var(--rc);
+    stroke-width: 1.6;
+    transition: fill-opacity 0.18s ease, filter 0.18s ease;
   }
-  .chip:hover { transform: translateY(-2px); border-color: var(--teal); }
-  .chip.found {
-    background: var(--good);
-    border-color: var(--good);
-    color: #fff;
+  [data-region]:hover { fill-opacity: 0.55; }
+  [data-region].active {
+    fill-opacity: 0.9;
+    filter: drop-shadow(0 0 6px var(--rc));
+    animation: throb 0.9s ease-in-out infinite;
   }
-  [hidden] { display: none !important; }
-  .scoreline {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-top: 14px;
-    color: var(--muted);
-    font-weight: 700;
+  [data-region].dim { fill-opacity: 0.12; }
+  @keyframes throb {
+    0%, 100% { fill-opacity: 0.75; }
+    50% { fill-opacity: 0.98; }
   }
-  .scoreline strong {
-    font-family: "Baloo 2", sans-serif;
-    font-size: 1.5rem;
-    color: var(--coral);
+  .lbl {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; fill: var(--ink);
+    pointer-events: none; opacity: 0.85; paint-order: stroke; stroke: var(--panel); stroke-width: 3px;
+  }
+  .spark { fill: #fff; pointer-events: none; animation: spark 0.6s ease-out forwards; }
+  @keyframes spark {
+    0% { r: 1; opacity: 1; }
+    100% { r: 5; opacity: 0; }
+  }
+
+  .tip {
+    position: absolute; pointer-events: none; background: var(--ink); color: var(--panel);
+    font: 500 0.8rem "IBM Plex Sans", sans-serif; padding: 4px 9px; border-radius: 6px;
+    transform: translate(-50%, -130%); white-space: nowrap; opacity: 0; transition: opacity 0.12s;
+  }
+  .tip.show { opacity: 1; }
+
+  /* Activity monitor */
+  .monitor { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .monitor-head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    padding: 0 4px 6px; flex-wrap: wrap;
+  }
+  .readout {
+    font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--muted);
     font-variant-numeric: tabular-nums;
   }
-  .hint { color: var(--muted); font-size: 0.92rem; line-height: 1.55; margin: 0; }
-  .hint code {
-    background: var(--ground);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 1px 6px;
-    font-size: 0.85em;
+  .readout b { color: var(--ink); font-weight: 500; }
+  canvas#eeg {
+    width: 100%; height: 96px; display: block; background: var(--monitor);
+    border: 1px solid var(--line); border-radius: 8px;
   }
 
-  /* confetti burst on quiz success */
-  .confetti {
-    position: absolute;
-    font-size: 1.5rem;
-    pointer-events: none;
-    animation: fly 0.9s ease-out forwards;
+  /* Side panel */
+  .panel { display: flex; flex-direction: column; gap: 14px; }
+  .info { padding: 18px 20px; }
+  .info h2 {
+    font-family: "Sora", sans-serif; font-weight: 600; font-size: 1.25rem; margin: 0;
+    display: flex; align-items: center; gap: 10px; text-wrap: balance;
   }
-  @keyframes fly {
-    0% { transform: translate(0, 0) scale(0.6); opacity: 1; }
-    100% { transform: translate(var(--dx), var(--dy)) scale(1.2); opacity: 0; }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; flex: none; background: var(--rc); }
+  .role { color: var(--muted); margin: 4px 0 12px; }
+  .info h3 {
+    font: 600 0.72rem "IBM Plex Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); margin: 14px 0 6px;
+  }
+  .info ul { margin: 0; padding-left: 18px; }
+  .info li { margin: 2px 0; }
+  .stim {
+    margin-top: 14px; width: 100%; font: 600 0.95rem "IBM Plex Sans", sans-serif;
+    background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 11px 14px; cursor: pointer;
+  }
+  .stim:disabled { opacity: 0.5; cursor: default; }
+  .output {
+    margin-top: 10px; background: var(--monitor); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 12px; font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; min-height: 3.6em;
+    white-space: pre-wrap; color: var(--ink);
+  }
+  .output .cursor { display: inline-block; width: 7px; height: 0.9em; background: var(--accent); vertical-align: -1px; animation: blinkc 0.8s step-end infinite; }
+  @keyframes blinkc { 50% { opacity: 0; } }
+  .fact { font-size: 0.88rem; color: var(--muted); margin: 10px 0 0; }
+  .neurons { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+
+  .list { display: flex; flex-direction: column; gap: 6px; }
+  .row {
+    display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
+    background: var(--ground); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 12px; cursor: pointer; font: 500 0.9rem "IBM Plex Sans", sans-serif; color: var(--ink);
+  }
+  .row:hover { border-color: var(--accent); }
+  .row.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .row .sub { display: block; font-weight: 400; font-size: 0.8rem; color: var(--muted); }
+  .row .n { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: var(--muted); flex: none; }
+  .steps { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+  .step {
+    display: flex; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--muted);
+    padding: 4px 8px; border-radius: 6px;
+  }
+  .step .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rc); flex: none; }
+  .step.on { background: var(--ground); color: var(--ink); }
+  .step.done { color: var(--ink); }
+
+  .quiz-q { font-family: "Sora", sans-serif; font-weight: 600; font-size: 1.05rem; margin: 0 0 6px; }
+  .quiz-fb { min-height: 1.5em; color: var(--muted); }
+  .quiz-fb.good { color: #2E9E5B; }
+  .quiz-fb.bad { color: #D9534F; }
+  .score { font-family: "IBM Plex Mono", monospace; color: var(--muted); margin-top: 8px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 0 4px; }
+  .legend button {
+    display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 0;
+    font: 500 0.8rem "IBM Plex Sans", sans-serif; color: var(--muted); cursor: pointer;
+  }
+  .legend button:hover { color: var(--ink); }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-region].active { animation: none; }
+    .spark { animation: none; display: none; }
   }
 </style>
 </head>
@@ -352,297 +236,536 @@
 
 <div class="wrap">
   <header>
-    <h1>Body Parts Buddy<span class="dot">!</span></h1>
-    <div class="controls">
-      <div class="mode-switch" role="group" aria-label="Game mode">
-        <button id="modeExplore" class="on">Explore</button>
-        <button id="modeQuiz">Find it!</button>
+    <h1>Human Brain Simulator<small>Click a region · Stimulate it · Run a scenario</small></h1>
+    <div class="toolbar">
+      <div class="seg" id="viewSeg" role="group" aria-label="View"></div>
+      <div class="seg" id="modeSeg" role="group" aria-label="Mode">
+        <button data-mode="explore" class="on">Explore</button>
+        <button data-mode="scenario">Scenarios</button>
+        <button data-mode="quiz">Quiz</button>
       </div>
-      <button class="sound-btn" id="soundBtn" aria-label="Toggle sound" title="Toggle sound">🔊</button>
     </div>
   </header>
 
   <main>
-    <section class="stage" aria-label="Bo the character">
-      <div class="bubble" id="bubble" aria-live="polite">Hi! I'm Bo. Tap a body part!</div>
-      <figure class="bo" id="boFigure">
-        <svg viewBox="0 0 420 520" role="img" aria-label="Bo, a friendly teal cartoon character">
-          <g class="character" id="character">
-            <!-- Arms (behind body). Each part is a <g data-part="..."> -->
-            <g data-part="arms" tabindex="0" role="button" aria-label="Arms">
-              <g class="arm-l">
-                <path d="M 128 315 L 72 388" stroke="var(--teal-deep)" stroke-width="27" stroke-linecap="round" fill="none"/>
-              </g>
-              <g class="arm-r">
-                <path d="M 292 315 L 348 388" stroke="var(--teal-deep)" stroke-width="27" stroke-linecap="round" fill="none"/>
-              </g>
-            </g>
+    <section class="card stage">
+      <div class="stage-top">
+        <span class="eyebrow" id="viewTitle">Outside view · left hemisphere, front is left</span>
+        <div class="legend" id="legend"></div>
+      </div>
 
-            <!-- Legs and feet -->
-            <g data-part="legs" tabindex="0" role="button" aria-label="Legs">
-              <g class="leg-l"><rect x="163" y="420" width="32" height="62" rx="16" fill="var(--teal-deep)"/></g>
-              <g class="leg-r"><rect x="225" y="420" width="32" height="62" rx="16" fill="var(--teal-deep)"/></g>
-            </g>
-            <g data-part="feet" tabindex="0" role="button" aria-label="Feet">
-              <g class="foot-l"><ellipse cx="172" cy="492" rx="35" ry="16" fill="var(--coral)"/></g>
-              <g class="foot-r"><ellipse cx="248" cy="492" rx="35" ry="16" fill="var(--coral)"/></g>
-            </g>
-
-            <!-- Body + tummy -->
-            <rect x="188" y="225" width="44" height="40" fill="var(--teal)"/>
-            <ellipse cx="210" cy="350" rx="96" ry="104" fill="var(--teal)"/>
-            <g data-part="tummy" tabindex="0" role="button" aria-label="Tummy">
-              <ellipse cx="210" cy="372" rx="58" ry="62" fill="#FFF3D6"/>
-              <circle cx="210" cy="372" r="7" fill="var(--sun)"/>
-            </g>
-
-            <!-- Hands (in front so claps read) -->
-            <g data-part="hands" tabindex="0" role="button" aria-label="Hands">
-              <g class="hand-l"><circle cx="70" cy="392" r="19" fill="var(--sun)"/></g>
-              <g class="hand-r"><circle cx="350" cy="392" r="19" fill="var(--sun)"/></g>
-            </g>
-
-            <!-- Head group carries the face parts so a nod moves everything -->
-            <g data-part="head" tabindex="0" role="button" aria-label="Head">
-              <g data-part="ears" tabindex="0" role="button" aria-label="Ears">
-                <g class="ear-l"><circle cx="118" cy="155" r="24" fill="var(--teal-deep)"/></g>
-                <g class="ear-r"><circle cx="302" cy="155" r="24" fill="var(--teal-deep)"/></g>
-              </g>
-              <circle cx="210" cy="155" r="88" fill="var(--teal)"/>
-              <path d="M 200 68 Q 210 42 232 52 Q 218 56 216 72 Z" fill="var(--teal-deep)"/>
-              <circle cx="150" cy="185" r="11" fill="var(--coral)" opacity="0.35"/>
-              <circle cx="270" cy="185" r="11" fill="var(--coral)" opacity="0.35"/>
-              <g data-part="eyes" tabindex="0" role="button" aria-label="Eyes">
-                <circle cx="178" cy="140" r="17" fill="#FFFFFF"/>
-                <circle cx="242" cy="140" r="17" fill="#FFFFFF"/>
-                <g id="pupils">
-                  <circle cx="180" cy="143" r="7.5" fill="#20423B"/>
-                  <circle cx="240" cy="143" r="7.5" fill="#20423B"/>
-                </g>
-              </g>
-              <g data-part="nose" tabindex="0" role="button" aria-label="Nose">
-                <ellipse cx="210" cy="172" rx="10" ry="13" fill="var(--coral)"/>
-              </g>
-              <g data-part="mouth" tabindex="0" role="button" aria-label="Mouth">
-                <path d="M 183 198 Q 210 222 237 198" stroke="#20423B" stroke-width="6" stroke-linecap="round" fill="none"/>
-              </g>
-            </g>
-          </g>
+      <div class="brainbox" id="brainbox">
+        <!-- ================= OUTSIDE (LATERAL) VIEW ================= -->
+        <svg class="view on" data-view="lateral" viewBox="0 0 640 480" role="img" aria-label="Lateral view of the brain">
+          <path class="tissue" d="M110,250 C80,200 85,90 200,65 C280,45 400,40 480,70 C560,100 580,200 540,270 C520,290 490,295 455,285 C420,300 380,305 350,300 C280,305 210,310 170,290 C155,275 150,258 110,250 Z"/>
+          <path data-region="frontal" style="--rc:#F0876A" d="M110,250 C80,200 85,90 200,65 C250,52 300,50 335,60 C325,120 315,170 300,215 C250,225 200,235 160,245 C140,250 125,252 110,250 Z"/>
+          <path data-region="parietal" style="--rc:#5FA8D3" d="M335,60 C380,48 440,52 480,70 C495,110 500,150 500,190 C470,205 430,210 400,205 C365,208 330,212 300,215 C315,170 325,120 335,60 Z"/>
+          <path data-region="occipital" style="--rc:#B48CDD" d="M480,70 C560,100 580,200 540,270 C520,290 490,295 455,285 C465,255 480,225 500,190 C500,150 495,110 480,70 Z"/>
+          <path data-region="temporal" style="--rc:#7FBF7B" d="M160,245 C200,235 250,225 300,215 C330,212 365,208 400,205 C425,230 445,260 455,285 C420,300 380,305 350,300 C280,305 210,310 170,290 C155,275 150,258 160,245 Z"/>
+          <path data-region="cerebellum" style="--rc:#EFBE4B" d="M400,300 C430,290 470,290 500,300 C540,320 545,370 510,390 C480,405 430,405 405,385 C385,365 385,325 400,300 Z"/>
+          <path class="gyri" d="M412,325 C440,315 480,315 512,330 M408,350 C440,340 480,340 518,355 M412,375 C440,366 478,366 508,380"/>
+          <path data-region="brainstem" style="--rc:#8C9AA8" d="M350,300 C370,300 385,305 400,305 C405,340 400,380 395,420 C393,445 385,465 375,470 C360,470 350,455 348,430 C345,390 345,340 350,300 Z"/>
+          <path class="gyri" d="M150,120 C170,150 150,180 175,200 M205,90 C225,130 200,170 230,205 M260,75 C280,120 255,160 285,200 M370,80 C390,120 365,160 395,195 M430,90 C450,130 425,160 455,190 M500,120 C520,160 500,200 525,240 M200,265 C240,255 300,255 330,270 M250,290 C300,280 360,280 410,290"/>
+          <text class="lbl" x="150" y="150">frontal</text>
+          <text class="lbl" x="385" y="130">parietal</text>
+          <text class="lbl" x="495" y="230">occipital</text>
+          <text class="lbl" x="255" y="275">temporal</text>
+          <text class="lbl" x="425" y="360">cerebellum</text>
+          <text class="lbl" x="335" y="400">brainstem</text>
         </svg>
-      </figure>
+
+        <!-- ================= INSIDE (MEDIAL) VIEW ================= -->
+        <svg class="view" data-view="medial" viewBox="0 0 640 480" role="img" aria-label="Medial view of the brain">
+          <path class="tissue" d="M110,250 C80,200 85,90 200,65 C280,45 400,40 480,70 C560,100 580,200 540,270 C520,290 490,295 455,285 C420,300 380,305 350,300 C280,305 210,310 170,290 C155,275 150,258 110,250 Z"/>
+          <path class="gyri" d="M170,110 C200,140 190,190 220,230 M250,80 C270,120 250,150 270,180 M350,70 C365,100 350,120 360,135 M440,80 C460,120 440,150 470,175 M520,140 C535,180 520,210 540,250"/>
+          <path data-region="corpus" style="--rc:#D9A066" d="M190,200 C200,150 300,130 400,140 C460,146 490,175 480,205 C470,215 455,215 450,205 C450,180 420,165 380,165 C320,160 240,175 225,210 C220,220 200,222 190,200 Z"/>
+          <ellipse data-region="thalamus" style="--rc:#E06C8C" cx="340" cy="215" rx="45" ry="28"/>
+          <ellipse data-region="hypothalamus" style="--rc:#F2A65A" cx="315" cy="255" rx="30" ry="14"/>
+          <g data-region="pituitary" style="--rc:#C77DFF">
+            <path d="M305,268 L299,288" stroke="#C77DFF" stroke-width="4" fill="none"/>
+            <circle cx="298" cy="298" r="12"/>
+          </g>
+          <path data-region="hippocampus" style="--rc:#3FB8AF" d="M250,275 C290,265 330,275 360,290 C380,300 390,315 385,325 C360,320 320,305 285,300 C265,296 250,290 250,275 Z"/>
+          <ellipse data-region="amygdala" style="--rc:#E45757" cx="238" cy="284" rx="16" ry="12"/>
+          <path data-region="cerebellum" style="--rc:#EFBE4B" d="M400,300 C430,290 470,290 500,300 C540,320 545,370 510,390 C480,405 430,405 405,385 C385,365 385,325 400,300 Z"/>
+          <path class="gyri" d="M455,345 L455,310 M455,345 L430,325 M455,345 L482,322 M455,345 L425,360 M455,345 L490,362 M455,345 L440,385 M455,345 L470,388"/>
+          <path data-region="brainstem" style="--rc:#8C9AA8" d="M350,300 C370,300 385,305 400,305 C405,340 400,380 395,420 C393,445 385,465 375,470 C360,470 350,455 348,430 C345,390 345,340 350,300 Z"/>
+          <text class="lbl" x="285" y="152">corpus callosum</text>
+          <text class="lbl" x="312" y="219">thalamus</text>
+          <text class="lbl" x="196" y="262">hypothalamus</text>
+          <text class="lbl" x="188" y="303">amygdala</text>
+          <text class="lbl" x="318" y="297">hippocampus</text>
+          <text class="lbl" x="262" y="326">pituitary</text>
+          <text class="lbl" x="455" y="430">cerebellum</text>
+          <text class="lbl" x="335" y="410">brainstem</text>
+        </svg>
+        <div class="tip" id="tip"></div>
+      </div>
+
+      <div class="monitor">
+        <div class="monitor-head">
+          <span class="eyebrow">Activity monitor</span>
+          <span class="readout" id="readout">idle · <b>~10 Hz</b> alpha · resting</span>
+        </div>
+        <canvas id="eeg" height="96"></canvas>
+      </div>
     </section>
 
     <aside class="panel">
-      <div class="card">
-        <h2>Bo's body parts</h2>
-        <div class="chips" id="chips"></div>
-        <div class="scoreline" id="scoreline" hidden>
-          Found <strong id="score">0</strong> of <strong id="total">0</strong>
-        </div>
-      </div>
-      <div class="card">
-        <h2>Grow the game</h2>
-        <p class="hint">
-          Every part is one entry in the <code>PARTS</code> list plus one
-          <code>&lt;g data-part&gt;</code> drawing and one animation. Add
-          <code>knees</code>, <code>elbows</code>, or <code>shoulders</code>
-          the same way — the chips, the quiz, and the voice pick them up
-          automatically.
-        </p>
-      </div>
+      <div class="card info" id="infoCard"></div>
+      <div class="card info" id="scenarioCard" hidden></div>
+      <div class="card info" id="quizCard" hidden></div>
     </aside>
   </main>
 </div>
 
 <script>
-  /* ============================================================
-     THE PARTS REGISTRY — the one place that defines the game.
-     To add a new body part:
-       1. Draw it in the SVG inside <g data-part="yourpart">.
-       2. Add an entry here (id must match data-part).
-       3. Add a CSS animation class ".anim-yourmove".
-     Chips, quiz rounds, and speech all derive from this list.
-     ============================================================ */
-  const PARTS = [
-    { id: "head",  label: "Head",  anim: "nod",    say: "This is my head!" },
-    { id: "eyes",  label: "Eyes",  anim: "blink",  say: "I see with my eyes!" },
-    { id: "ears",  label: "Ears",  anim: "wiggle", say: "I hear with my ears!" },
-    { id: "nose",  label: "Nose",  anim: "boop",   say: "Boop! That's my nose!" },
-    { id: "mouth", label: "Mouth", anim: "chomp",  say: "I talk with my mouth!" },
-    { id: "arms",  label: "Arms",  anim: "wave",   say: "I wave with my arms!" },
-    { id: "hands", label: "Hands", anim: "clap",   say: "I clap with my hands!" },
-    { id: "tummy", label: "Tummy", anim: "jiggle", say: "My tummy is ticklish!" },
-    { id: "legs",  label: "Legs",  anim: "march",  say: "I march with my legs!" },
-    { id: "feet",  label: "Feet",  anim: "stomp",  say: "I stomp with my feet!" },
+  /* ======================================================================
+     VIEWS — each is one SVG above with data-view="<id>".
+     Adding a new body part = new VIEW + new SVG + REGIONS with view: "<id>".
+     ====================================================================== */
+  const VIEWS = [
+    { id: "lateral", label: "Outside", title: "Outside view · left hemisphere, front is left" },
+    { id: "medial",  label: "Inside",  title: "Inside view · cut down the middle, front is left" },
   ];
 
-  const bubble = document.getElementById("bubble");
-  const character = document.getElementById("character");
-  const figure = document.getElementById("boFigure");
-  const chipsBox = document.getElementById("chips");
-  const scoreline = document.getElementById("scoreline");
-  const scoreEl = document.getElementById("score");
-  const totalEl = document.getElementById("total");
-  const soundBtn = document.getElementById("soundBtn");
-  const modeExplore = document.getElementById("modeExplore");
-  const modeQuiz = document.getElementById("modeQuiz");
+  /* ======================================================================
+     REGIONS — the brain registry. `id` must match data-region in the SVG.
+     stimulate: what happens when this area fires (shown in the output box)
+     damage:    what goes wrong when it is injured
+     hz:        dominant rhythm to draw on the activity monitor
+     clue:      quiz prompt ("Which region ... ?")
+     ====================================================================== */
+  const REGIONS = [
+    { id: "frontal", name: "Frontal lobe", view: "lateral", color: "#F0876A",
+      role: "Planning, decisions, movement, speech production, personality.",
+      functions: ["Motor cortex — sends movement commands to muscles", "Prefrontal cortex — judgment, planning, impulse control", "Broca's area — putting thoughts into words"],
+      stimulate: "> motor cortex fires\n> right hand twitches, fingers curl\n> subject reports an urge to speak",
+      damage: "Trouble planning, personality changes, impulsivity (the Phineas Gage case), or weakness on the opposite side of the body.",
+      fact: "The prefrontal cortex is the last part of the brain to mature — around age 25.",
+      neurons: "Part of ≈16 billion cortical neurons", hz: 22, band: "beta · focused",
+      clue: "plans your day and decides to move your hand" },
+    { id: "parietal", name: "Parietal lobe", view: "lateral", color: "#5FA8D3",
+      role: "Touch, body position, spatial awareness, numbers.",
+      functions: ["Somatosensory cortex — touch, pressure, pain, temperature", "Mapping where your body is in space", "Attention and reading a map"],
+      stimulate: "> somatosensory cortex fires\n> tingling reported on the right cheek\n> sense of the arm 'floating'",
+      damage: "Hemispatial neglect: ignoring one whole side of the world, e.g. eating only the left half of a plate.",
+      fact: "A distorted 'map' of your body — the homunculus — lives here, with giant lips and hands.",
+      neurons: "Part of ≈16 billion cortical neurons", hz: 14, band: "beta · sensing",
+      clue: "tells you where your arm is without looking" },
+    { id: "temporal", name: "Temporal lobe", view: "lateral", color: "#7FBF7B",
+      role: "Hearing, language comprehension, memory, faces.",
+      functions: ["Auditory cortex — processing sound", "Wernicke's area — understanding words", "Recognising faces and objects"],
+      stimulate: "> auditory cortex fires\n> subject hears a buzzing tone, then a voice\n> a vivid old memory surfaces",
+      damage: "Words sound like a foreign language (Wernicke's aphasia), or faces become unrecognisable (prosopagnosia).",
+      fact: "Stimulating this lobe during surgery can replay memories like a film — Wilder Penfield saw it in the 1930s.",
+      neurons: "Part of ≈16 billion cortical neurons", hz: 10, band: "alpha · listening",
+      clue: "lets you understand the words in a sentence" },
+    { id: "occipital", name: "Occipital lobe", view: "lateral", color: "#B48CDD",
+      role: "Vision — everything you see is built here.",
+      functions: ["Primary visual cortex — edges, orientation, motion", "Colour and shape processing", "Sends 'what' and 'where' streams forward"],
+      stimulate: "> visual cortex fires\n> subject sees flashes of light (phosphenes)\n> a spinning shape appears in the left visual field",
+      damage: "Cortical blindness — the eyes work perfectly but the brain cannot build the picture.",
+      fact: "The right half of what you see is processed by the left occipital lobe, and vice versa.",
+      neurons: "Part of ≈16 billion cortical neurons", hz: 30, band: "gamma · seeing",
+      clue: "turns signals from your eyes into a picture" },
+    { id: "cerebellum", name: "Cerebellum", view: "lateral", color: "#EFBE4B",
+      role: "Balance, coordination, timing, smooth movement.",
+      functions: ["Fine-tunes every movement in real time", "Balance and posture", "Learned motor skills — riding a bike, typing"],
+      stimulate: "> cerebellum fires\n> posture corrects, arm movement smooths out\n> timing of a tapping rhythm improves",
+      damage: "Ataxia: clumsy, staggering movements, slurred speech, tremor when reaching for things.",
+      fact: "It is 10% of the brain's volume but holds ≈69 of its ≈86 billion neurons.",
+      neurons: "≈69 billion neurons", hz: 8, band: "theta · coordinating",
+      clue: "keeps you balanced when you ride a bike" },
+    { id: "brainstem", name: "Brainstem", view: "lateral", color: "#8C9AA8",
+      role: "Life support: breathing, heartbeat, sleep-wake, reflexes.",
+      functions: ["Medulla — breathing and heart rate", "Pons — sleep, arousal, face sensation", "Midbrain — eye movement, reflexes"],
+      stimulate: "> medulla fires\n> heart rate 72 → 88 bpm\n> breathing rate rises, pupils dilate",
+      damage: "Life-threatening — coma or loss of breathing. It is why brainstem death is legal death.",
+      fact: "The brainstem keeps you breathing while you sleep without any conscious effort.",
+      neurons: "Part of ≈0.7 billion subcortical neurons", hz: 4, band: "delta · automatic",
+      clue: "keeps your heart beating while you sleep" },
+    { id: "corpus", name: "Corpus callosum", view: "medial", color: "#D9A066",
+      role: "The bridge: 200 million fibres linking the two hemispheres.",
+      functions: ["Passes information between left and right brain", "Lets the two halves act as one mind"],
+      stimulate: "> callosal fibres fire\n> left-hand touch reported by the speaking (left) hemisphere\n> both hands coordinate",
+      damage: "'Split-brain': the left hand may not know what the right is doing; objects felt with the left hand cannot be named.",
+      fact: "Cutting it was once a treatment for severe epilepsy — and revealed two 'minds' in one head.",
+      neurons: "≈200 million axons (fibres, not cell bodies)", hz: 12, band: "alpha · relaying",
+      clue: "connects the left and right halves of the brain" },
+    { id: "thalamus", name: "Thalamus", view: "medial", color: "#E06C8C",
+      role: "Relay station: almost every sense passes through here.",
+      functions: ["Routes sight, sound, touch to the right cortex", "Gates what reaches awareness", "Central to consciousness and sleep"],
+      stimulate: "> thalamus fires\n> all senses sharpen at once\n> subject snaps to full alertness",
+      damage: "Chronic pain, sensory loss, or permanent unconsciousness.",
+      fact: "Smell is the only sense that skips the thalamus on its way to the cortex.",
+      neurons: "≈50 million neurons (both sides)", hz: 10, band: "alpha · relaying",
+      clue: "is the relay station every sense except smell passes through" },
+    { id: "hypothalamus", name: "Hypothalamus", view: "medial", color: "#F2A65A",
+      role: "Body thermostat: hunger, thirst, temperature, hormones.",
+      functions: ["Keeps temperature, hunger, thirst in balance", "Controls the pituitary and its hormones", "Runs the body clock"],
+      stimulate: "> hypothalamus fires\n> sudden hunger, skin flushes warm\n> stress hormone (cortisol) released",
+      damage: "Body temperature swings, endless hunger or none, disrupted sleep cycles.",
+      fact: "It is only about the size of an almond but controls the whole endocrine system.",
+      neurons: "≈few million neurons", hz: 6, band: "theta · regulating",
+      clue: "makes you feel hungry and keeps your temperature steady" },
+    { id: "pituitary", name: "Pituitary gland", view: "medial", color: "#C77DFF",
+      role: "Master gland: hormones for growth, stress, reproduction.",
+      functions: ["Growth hormone", "Thyroid, adrenal and sex hormone control", "Oxytocin and water balance"],
+      stimulate: "> pituitary fires\n> growth hormone pulse detected\n> adrenal glands ramp up cortisol",
+      damage: "Growth problems, fatigue, infertility, extreme thirst.",
+      fact: "It sits in a bony cradle called the 'Turkish saddle' (sella turcica).",
+      neurons: "Gland cells, not neurons — hormone secreting", hz: 3, band: "delta · endocrine",
+      clue: "is the master gland that releases growth hormone" },
+    { id: "hippocampus", name: "Hippocampus", view: "medial", color: "#3FB8AF",
+      role: "Memory maker: turns today's experiences into lasting memories.",
+      functions: ["Forms new long-term memories", "Spatial memory and navigation", "Replays the day during sleep"],
+      stimulate: "> hippocampus fires\n> place cells map the room\n> subject recalls yesterday's lunch in detail",
+      damage: "Anterograde amnesia — no new memories form (patient H.M. lived like this for 55 years).",
+      fact: "London taxi drivers who memorise the city grow a measurably larger hippocampus.",
+      neurons: "≈40 million neurons (both sides)", hz: 7, band: "theta · remembering",
+      clue: "turns what happened today into a memory you keep" },
+    { id: "amygdala", name: "Amygdala", view: "medial", color: "#E45757",
+      role: "Threat detector: fear, emotion, fight-or-flight trigger.",
+      functions: ["Detects danger in a fraction of a second", "Tags memories with emotion", "Triggers the stress response"],
+      stimulate: "> amygdala fires\n> heart pounds, palms sweat\n> a sense of dread with no obvious cause",
+      damage: "Fearlessness — one patient (S.M.) could handle snakes and spiders without alarm.",
+      fact: "It can react to a snake shape before the visual cortex has finished 'seeing' it.",
+      neurons: "≈12 million neurons (both sides)", hz: 18, band: "beta · alarmed",
+      clue: "makes your heart pound when something scares you" },
+  ];
+
+  /* ======================================================================
+     SCENARIOS — sequences of regions firing, showing the brain as a system.
+     Each step: region id, how long it fires, and a one-line caption.
+     ====================================================================== */
+  const SCENARIOS = [
+    { id: "read", name: "Reading this sentence", steps: [
+      ["occipital", 1500, "Eyes send letter shapes to the visual cortex"],
+      ["temporal", 1500, "Wernicke's area decodes the words' meaning"],
+      ["frontal", 1500, "Broca's area voices it silently; you decide what it means"],
+      ["hippocampus", 1500, "The idea is filed away for later"],
+    ]},
+    { id: "catch", name: "Catching a ball", steps: [
+      ["occipital", 1200, "You see the ball leave their hand"],
+      ["parietal", 1200, "Its path and your hand's position are mapped"],
+      ["frontal", 1200, "Motor cortex fires the reach command"],
+      ["cerebellum", 1200, "Timing and grip are fine-tuned mid-flight"],
+      ["parietal", 1000, "Touch confirms: caught"],
+    ]},
+    { id: "scare", name: "A sudden loud bang", steps: [
+      ["thalamus", 1000, "Sound arrives at the relay station"],
+      ["amygdala", 1300, "Threat! The alarm fires before you know why"],
+      ["hypothalamus", 1300, "Adrenaline and cortisol are ordered"],
+      ["brainstem", 1300, "Heart and breathing speed up"],
+      ["frontal", 1500, "Prefrontal cortex: 'it was just a door' — calm down"],
+    ]},
+    { id: "sleep", name: "Falling asleep", steps: [
+      ["hypothalamus", 1500, "The body clock signals night"],
+      ["thalamus", 1500, "Sensory gates close; the world fades"],
+      ["hippocampus", 1500, "The day's memories replay and consolidate"],
+      ["brainstem", 1500, "Breathing and heartbeat run on autopilot"],
+    ]},
+    { id: "music", name: "Hearing your favourite song", steps: [
+      ["temporal", 1400, "Auditory cortex decodes melody and lyrics"],
+      ["hippocampus", 1400, "A memory of where you first heard it"],
+      ["amygdala", 1200, "The emotional hit — goosebumps"],
+      ["cerebellum", 1200, "Your foot starts tapping in time"],
+      ["frontal", 1200, "You sing along"],
+    ]},
+  ];
+
+  /* ============================ ENGINE ============================ */
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+  const byId = Object.fromEntries(REGIONS.map(r => [r.id, r]));
 
   let mode = "explore";
-  let soundOn = true;
-  let quizTarget = null;
-  let found = new Set();
-  try { soundOn = localStorage.getItem("bp-sound") !== "off"; } catch (e) {}
-  soundBtn.textContent = soundOn ? "🔊" : "🔇";
+  let currentView = "lateral";
+  let activeId = null;
+  let scenarioTimer = null;
+  let typingTimer = null;
 
-  function speak(text) {
-    if (!soundOn) return;
-    try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.95;
-      u.pitch = 1.25;
-      speechSynthesis.speak(u);
-    } catch (e) {}
-  }
-
-  function announce(text) {
-    bubble.textContent = text;
-    bubble.classList.remove("pop");
-    void bubble.offsetWidth;
-    bubble.classList.add("pop");
-  }
-
-  function playPart(part) {
-    const g = document.querySelector(`[data-part="${part.id}"]`);
-    if (!g) return;
-    const cls = "anim-" + part.anim;
-    g.classList.remove(cls, "lit");
-    void g.getBoundingClientRect();
-    g.classList.add(cls, "lit");
-    setTimeout(() => g.classList.remove(cls, "lit"), 1200);
-  }
-
-  function confettiBurst() {
-    const emojis = ["🎉", "⭐", "💛", "🎈"];
-    for (let i = 0; i < 8; i++) {
-      const s = document.createElement("span");
-      s.className = "confetti";
-      s.textContent = emojis[i % emojis.length];
-      s.style.left = "50%";
-      s.style.top = "40%";
-      s.style.setProperty("--dx", (Math.random() * 260 - 130) + "px");
-      s.style.setProperty("--dy", (Math.random() * -180 - 40) + "px");
-      figure.appendChild(s);
-      setTimeout(() => s.remove(), 950);
-    }
-  }
-
-  function nextQuizRound() {
-    const remaining = PARTS.filter(p => !found.has(p.id));
-    if (remaining.length === 0) {
-      announce("You found them ALL! Amazing! 🎉");
-      speak("You found them all! Amazing!");
-      confettiBurst();
-      quizTarget = null;
-      return;
-    }
-    quizTarget = remaining[Math.floor(Math.random() * remaining.length)];
-    announce(`Where is my ${quizTarget.label.toLowerCase()}?`);
-    speak(`Where is my ${quizTarget.label}?`);
-  }
-
-  function handlePick(part) {
-    if (mode === "explore") {
-      announce(part.say);
-      speak(part.say);
-      playPart(part);
-      return;
-    }
-    if (!quizTarget) return;
-    if (part.id === quizTarget.id) {
-      found.add(part.id);
-      scoreEl.textContent = found.size;
-      document.querySelector(`.chip[data-chip="${part.id}"]`)?.classList.add("found");
-      announce(`Yes! That's my ${part.label.toLowerCase()}! 🎉`);
-      speak(`Yes! That's my ${part.label}!`);
-      playPart(part);
-      confettiBurst();
-      setTimeout(nextQuizRound, 1600);
-    } else {
-      announce(`That's my ${part.label.toLowerCase()} — try again!`);
-      speak(`That's my ${part.label}. Try again!`);
-      character.classList.remove("shake");
-      void character.offsetWidth;
-      character.classList.add("shake");
-    }
-  }
-
-  // Build chips from the registry
-  totalEl.textContent = PARTS.length;
-  for (const part of PARTS) {
+  // ---- Views
+  const viewSeg = $("#viewSeg");
+  for (const v of VIEWS) {
     const b = document.createElement("button");
-    b.className = "chip";
-    b.dataset.chip = part.id;
-    b.textContent = part.label;
-    b.addEventListener("click", () => handlePick(part));
-    b.addEventListener("mouseenter", () => {
-      document.querySelector(`[data-part="${part.id}"]`)?.classList.add("lit");
-    });
-    b.addEventListener("mouseleave", () => {
-      document.querySelector(`[data-part="${part.id}"]`)?.classList.remove("lit");
-    });
-    chipsBox.appendChild(b);
+    b.textContent = v.label;
+    b.dataset.view = v.id;
+    b.addEventListener("click", () => showView(v.id));
+    viewSeg.appendChild(b);
+  }
+  function showView(id) {
+    currentView = id;
+    $$(".view").forEach(s => s.classList.toggle("on", s.dataset.view === id));
+    $$("#viewSeg button").forEach(b => b.classList.toggle("on", b.dataset.view === id));
+    $("#viewTitle").textContent = VIEWS.find(v => v.id === id).title;
+    renderLegend();
+  }
+  function renderLegend() {
+    const box = $("#legend");
+    box.innerHTML = "";
+    for (const r of REGIONS.filter(r => $(`.view[data-view="${currentView}"] [data-region="${r.id}"]`))) {
+      const b = document.createElement("button");
+      b.innerHTML = `<span class="swatch" style="--rc:${r.color}"></span>${r.name}`;
+      b.addEventListener("click", () => selectRegion(r.id));
+      box.appendChild(b);
+    }
   }
 
-  // Clicks and keyboard on the character itself
-  function partFromEvent(e) {
-    const g = e.target.closest("[data-part]");
-    if (!g) return null;
-    return PARTS.find(p => p.id === g.dataset.part) || null;
+  // ---- Region selection + highlighting
+  function paths(id) { return $$(`[data-region="${id}"]`); }
+  function clearActive() {
+    $$("[data-region]").forEach(p => p.classList.remove("active", "dim"));
   }
-  character.addEventListener("click", (e) => {
-    const part = partFromEvent(e);
-    if (part) { e.stopPropagation(); handlePick(part); }
+  function light(id, { dimOthers = false } = {}) {
+    clearActive();
+    const r = byId[id];
+    if (r.view !== currentView && !$$(`.view.on [data-region="${id}"]`).length) showView(r.view);
+    paths(id).forEach(p => p.classList.add("active"));
+    if (dimOthers) $$("[data-region]").forEach(p => { if (p.dataset.region !== id) p.classList.add("dim"); });
+    eeg.set(r);
+  }
+  function selectRegion(id) {
+    if (mode === "quiz") { quiz.answer(id); return; }
+    activeId = id;
+    light(id);
+    renderInfo(byId[id]);
+  }
+
+  $("#brainbox").addEventListener("click", e => {
+    const p = e.target.closest("[data-region]");
+    if (p) selectRegion(p.dataset.region);
   });
-  character.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter" && e.key !== " ") return;
-    const part = partFromEvent(e);
-    if (part) { e.preventDefault(); e.stopPropagation(); handlePick(part); }
+  const tip = $("#tip");
+  $("#brainbox").addEventListener("mousemove", e => {
+    const p = e.target.closest("[data-region]");
+    if (!p) { tip.classList.remove("show"); return; }
+    const box = $("#brainbox").getBoundingClientRect();
+    tip.textContent = byId[p.dataset.region].name;
+    tip.style.left = (e.clientX - box.left) + "px";
+    tip.style.top = (e.clientY - box.top) + "px";
+    tip.classList.add("show");
+  });
+  $("#brainbox").addEventListener("mouseleave", () => tip.classList.remove("show"));
+  $$("[data-region]").forEach(p => {
+    p.setAttribute("tabindex", "0");
+    p.setAttribute("role", "button");
+    p.setAttribute("aria-label", byId[p.dataset.region].name);
+    p.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectRegion(p.dataset.region); }
+    });
   });
 
-  // Mode switching
-  modeExplore.addEventListener("click", () => setMode("explore"));
-  modeQuiz.addEventListener("click", () => setMode("quiz"));
+  // ---- Neural firing sparks inside a region's shape
+  function sparks(id, count = 14) {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const svg = $(".view.on");
+    const shape = svg.querySelector(`[data-region="${id}"]`);
+    if (!shape) return;
+    const geo = shape.tagName === "g" ? shape.querySelector("circle, path, ellipse") : shape;
+    const bb = geo.getBBox();
+    const pt = svg.createSVGPoint();
+    let made = 0, tries = 0;
+    while (made < count && tries < 300) {
+      tries++;
+      pt.x = bb.x + Math.random() * bb.width;
+      pt.y = bb.y + Math.random() * bb.height;
+      if (!geo.isPointInFill(pt)) continue;
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("class", "spark");
+      c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y); c.setAttribute("r", 1);
+      c.style.animationDelay = (Math.random() * 0.5) + "s";
+      svg.appendChild(c);
+      setTimeout(() => c.remove(), 1200);
+      made++;
+    }
+  }
+
+  // ---- Info card
+  function renderInfo(r) {
+    const card = $("#infoCard");
+    card.innerHTML = `
+      <div class="eyebrow">${VIEWS.find(v => v.id === r.view).label} view</div>
+      <h2><span class="swatch" style="--rc:${r.color}"></span>${r.name}</h2>
+      <p class="role">${r.role}</p>
+      <h3>What it does</h3>
+      <ul>${r.functions.map(f => `<li>${f}</li>`).join("")}</ul>
+      <button class="stim" id="stimBtn">⚡ Stimulate ${r.name.toLowerCase()}</button>
+      <div class="output" id="output">Ready. Press stimulate to fire this region.</div>
+      <h3>If it is damaged</h3>
+      <p style="margin:0">${r.damage}</p>
+      <p class="fact">${r.fact}</p>
+      <div class="neurons">${r.neurons}</div>`;
+    $("#stimBtn").addEventListener("click", () => stimulate(r));
+  }
+  function stimulate(r) {
+    light(r.id, { dimOthers: true });
+    sparks(r.id, 18);
+    const s2 = setTimeout(() => sparks(r.id, 12), 500);
+    const s3 = setTimeout(() => sparks(r.id, 10), 1000);
+    typeOut($("#output"), r.stimulate);
+    const btn = $("#stimBtn");
+    btn.disabled = true;
+    setTimeout(() => { btn.disabled = false; clearActive(); paths(r.id).forEach(p => p.classList.add("active")); }, 2600);
+  }
+  function typeOut(el, text) {
+    clearInterval(typingTimer);
+    let i = 0;
+    el.innerHTML = '<span class="cursor"></span>';
+    typingTimer = setInterval(() => {
+      i++;
+      el.innerHTML = text.slice(0, i).replace(/</g, "&lt;") + '<span class="cursor"></span>';
+      if (i >= text.length) { clearInterval(typingTimer); }
+    }, 22);
+  }
+
+  // ---- Scenarios
+  function renderScenarios() {
+    const card = $("#scenarioCard");
+    card.innerHTML = `<div class="eyebrow">Scenarios</div>
+      <h2>Watch the brain work as a team</h2>
+      <p class="role">Each scenario fires regions in order. The view switches automatically.</p>
+      <div class="list" id="scenList"></div>
+      <div class="steps" id="steps"></div>`;
+    const list = $("#scenList");
+    for (const s of SCENARIOS) {
+      const b = document.createElement("button");
+      b.className = "row";
+      b.innerHTML = `<span style="flex:1">${s.name}<span class="sub">${s.steps.length} steps · ${s.steps.map(st => byId[st[0]].name.split(" ")[0]).join(" → ")}</span></span><span class="n">▶</span>`;
+      b.addEventListener("click", () => playScenario(s, b));
+      list.appendChild(b);
+    }
+  }
+  function playScenario(s, rowBtn) {
+    stopScenario();
+    $$("#scenList .row").forEach(r => r.classList.toggle("on", r === rowBtn));
+    const stepsBox = $("#steps");
+    stepsBox.innerHTML = s.steps.map(([id, , cap], i) =>
+      `<div class="step" data-i="${i}"><span class="dot" style="--rc:${byId[id].color}"></span>${byId[id].name}: ${cap}</div>`).join("");
+    let i = 0;
+    const run = () => {
+      if (i >= s.steps.length) {
+        clearActive(); eeg.set(null);
+        $$("#steps .step").forEach(el => el.classList.add("done"));
+        return;
+      }
+      const [id, ms] = s.steps[i];
+      light(id, { dimOthers: true });
+      sparks(id, 12);
+      $$("#steps .step").forEach(el => el.classList.toggle("on", +el.dataset.i === i));
+      $$("#steps .step").forEach(el => { if (+el.dataset.i < i) el.classList.add("done"); });
+      i++;
+      scenarioTimer = setTimeout(run, ms);
+    };
+    run();
+  }
+  function stopScenario() { clearTimeout(scenarioTimer); scenarioTimer = null; }
+
+  // ---- Quiz
+  const quiz = {
+    target: null, score: 0, asked: 0, pool: [],
+    start() {
+      this.score = 0; this.asked = 0;
+      this.pool = REGIONS.slice().sort(() => Math.random() - 0.5);
+      this.next();
+    },
+    next() {
+      clearActive();
+      if (this.pool.length === 0) {
+        $("#quizCard").innerHTML = `<div class="eyebrow">Quiz</div><h2>All done</h2>
+          <p class="role">You scored ${this.score} of ${this.asked}.</p>
+          <button class="stim" id="quizAgain">Play again</button>`;
+        $("#quizAgain").addEventListener("click", () => this.start());
+        return;
+      }
+      this.target = this.pool.pop();
+      this.asked++;
+      showView(this.target.view);
+      $("#quizCard").innerHTML = `<div class="eyebrow">Quiz · question ${this.asked} of ${REGIONS.length}</div>
+        <p class="quiz-q">Click the region that ${this.target.clue}.</p>
+        <p class="quiz-fb" id="quizFb">Hint: it is in the <b>${VIEWS.find(v => v.id === this.target.view).label.toLowerCase()}</b> view.</p>
+        <div class="score">score ${this.score} / ${this.asked - 1}</div>`;
+    },
+    answer(id) {
+      if (!this.target) return;
+      const fb = $("#quizFb");
+      if (id === this.target.id) {
+        this.score++;
+        fb.textContent = `Correct — the ${this.target.name.toLowerCase()}.`;
+        fb.className = "quiz-fb good";
+        light(id); sparks(id, 14);
+        const t = this.target; this.target = null;
+        setTimeout(() => this.next(), 1400);
+      } else {
+        fb.textContent = `That's the ${byId[id].name.toLowerCase()} — try again.`;
+        fb.className = "quiz-fb bad";
+      }
+    },
+  };
+
+  // ---- Modes
+  $$("#modeSeg button").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
   function setMode(m) {
     mode = m;
-    modeExplore.classList.toggle("on", m === "explore");
-    modeQuiz.classList.toggle("on", m === "quiz");
-    scoreline.hidden = m !== "quiz";
-    if (m === "quiz") {
-      found = new Set();
-      scoreEl.textContent = "0";
-      document.querySelectorAll(".chip").forEach(c => c.classList.remove("found"));
-      nextQuizRound();
-    } else {
-      quizTarget = null;
-      announce("Hi! I'm Bo. Tap a body part!");
-    }
+    stopScenario();
+    clearActive();
+    $$("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+    $("#infoCard").hidden = m !== "explore";
+    $("#scenarioCard").hidden = m !== "scenario";
+    $("#quizCard").hidden = m !== "quiz";
+    if (m === "explore") { if (activeId) { light(activeId); } else eeg.set(null); }
+    if (m === "scenario") { renderScenarios(); eeg.set(null); }
+    if (m === "quiz") quiz.start();
   }
 
-  soundBtn.addEventListener("click", () => {
-    soundOn = !soundOn;
-    soundBtn.textContent = soundOn ? "🔊" : "🔇";
-    try { localStorage.setItem("bp-sound", soundOn ? "on" : "off"); } catch (e) {}
-    if (!soundOn) { try { speechSynthesis.cancel(); } catch (e) {} }
-  });
+  // ---- Activity monitor (EEG-style trace)
+  const eeg = (() => {
+    const cv = $("#eeg"), ctx = cv.getContext("2d");
+    let region = null, t = 0, buf = [];
+    const readout = $("#readout");
+    function set(r) {
+      region = r;
+      readout.innerHTML = r
+        ? `${r.name.toLowerCase()} · <b>~${r.hz} Hz</b> ${r.band}`
+        : `idle · <b>~10 Hz</b> alpha · resting`;
+    }
+    function sample() {
+      const hz = region ? region.hz : 10;
+      const amp = region ? 0.85 : 0.28;
+      const v = Math.sin(t * hz * 0.09) * amp
+        + Math.sin(t * 0.37) * 0.12
+        + (Math.random() - 0.5) * 0.16;
+      t++;
+      return v;
+    }
+    function frame() {
+      const W = cv.clientWidth * devicePixelRatio, H = cv.height * devicePixelRatio;
+      if (cv.width !== W) { cv.width = W; cv.height = H; }
+      for (let k = 0; k < 3; k++) buf.push(sample());
+      if (buf.length > W / 2) buf.splice(0, buf.length - W / 2);
+      ctx.clearRect(0, 0, W, H);
+      ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--line");
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 40 * devicePixelRatio) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+      ctx.strokeStyle = region ? region.color : getComputedStyle(document.body).getPropertyValue("--muted");
+      ctx.lineWidth = 2 * devicePixelRatio;
+      ctx.beginPath();
+      buf.forEach((v, i) => {
+        const x = i * 2, y = H / 2 - v * H * 0.4;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+      ctx.stroke();
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    return { set };
+  })();
 
-  // Idle blink so Bo feels alive
-  setInterval(() => {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const eyes = document.querySelector('[data-part="eyes"]');
-    eyes.classList.add("anim-blink");
-    setTimeout(() => eyes.classList.remove("anim-blink"), 800);
-  }, 4200);
+  // ---- Boot: open on the frontal lobe so the page is alive at rest
+  showView("lateral");
+  selectRegion("frontal");
 </script>
 </body>
 </html>
