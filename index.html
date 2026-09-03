@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Human Brain Simulator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* ==========================================================================
+     Human Brain Simulator — 3D
+     The brain is generated procedurally with Three.js (no model files).
+     Data-driven: VIEWS, REGIONS and SCENARIOS (bottom of file) define the app.
+     ========================================================================== */
+  :root {
+    --ground: #EEF1F5;
+    --panel: #FFFFFF;
+    --ink: #1B2430;
+    --muted: #5C6B7A;
+    --line: #D5DCE5;
+    --monitor: #F7F9FB;
+    --stage-bg: radial-gradient(ellipse at 50% 40%, #FFFFFF 0%, #E4E9F0 100%);
+    --shadow: 0 8px 28px rgba(27, 36, 48, 0.08);
+    --accent: #2F6FED;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131920;
+      --panel: #1B232D;
+      --ink: #E8EDF3;
+      --muted: #98A6B5;
+      --line: #2B3641;
+      --monitor: #10161C;
+      --stage-bg: radial-gradient(ellipse at 50% 40%, #243040 0%, #121820 100%);
+      --shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+      --accent: #6C9BFF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #131920;
+    --panel: #1B232D;
+    --ink: #E8EDF3;
+    --muted: #98A6B5;
+    --line: #2B3641;
+    --monitor: #10161C;
+    --stage-bg: radial-gradient(ellipse at 50% 40%, #243040 0%, #121820 100%);
+    --shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+    --accent: #6C9BFF;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-size: 15px; line-height: 1.5;
+  }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 18px 20px 40px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-bottom: 16px; }
+  h1 { font-family: "Sora", sans-serif; font-weight: 700; font-size: clamp(1.3rem, 2.6vw, 1.7rem); margin: 0; letter-spacing: -0.01em; }
+  h1 small {
+    display: block; font-family: "IBM Plex Mono", monospace; font-weight: 400; font-size: 0.72rem;
+    color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px;
+  }
+  .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+  .seg button {
+    font: 500 0.85rem "IBM Plex Sans", sans-serif; color: var(--muted); background: transparent; border: 0;
+    border-radius: 7px; padding: 6px 13px; cursor: pointer;
+  }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  main { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+  .stage { padding: 14px 14px 10px; }
+  .stage-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 4px 8px; }
+  .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .ghost {
+    font: 500 0.78rem "IBM Plex Sans", sans-serif; color: var(--muted); background: transparent;
+    border: 1px solid var(--line); border-radius: 7px; padding: 4px 10px; cursor: pointer;
+  }
+  .ghost.on { color: var(--accent); border-color: var(--accent); }
+
+  .viewport {
+    position: relative; border-radius: 12px; overflow: hidden; background: var(--stage-bg);
+    border: 1px solid var(--line); height: min(520px, 62vw); cursor: grab; touch-action: none;
+  }
+  .viewport.dragging { cursor: grabbing; }
+  .viewport canvas { width: 100%; height: 100%; display: block; }
+  .hint3d {
+    position: absolute; left: 10px; bottom: 8px; font-family: "IBM Plex Mono", monospace; font-size: 0.7rem;
+    color: var(--muted); pointer-events: none; opacity: 0.9;
+  }
+  .lbl3d {
+    position: absolute; transform: translate(-50%, -50%); font: 500 0.74rem "IBM Plex Mono", monospace;
+    color: var(--ink); background: color-mix(in srgb, var(--panel) 82%, transparent);
+    border: 1px solid var(--rc); border-radius: 6px; padding: 2px 7px; cursor: pointer; white-space: nowrap;
+    pointer-events: auto; user-select: none;
+  }
+  .lbl3d::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--rc); margin-right: 5px; }
+  .lbl3d.on { background: var(--rc); color: #fff; border-color: var(--rc); }
+  .lbl3d.on::before { background: #fff; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 8px 4px 0; }
+  .legend button { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 2px 0; font: 500 0.8rem "IBM Plex Sans", sans-serif; color: var(--muted); cursor: pointer; }
+  .legend button:hover { color: var(--ink); }
+  .swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; background: var(--rc); }
+
+  .monitor { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .monitor-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 0 4px 6px; flex-wrap: wrap; }
+  .readout { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .readout b { color: var(--ink); font-weight: 500; }
+  canvas#eeg { width: 100%; height: 90px; display: block; background: var(--monitor); border: 1px solid var(--line); border-radius: 8px; }
+
+  .panel { display: flex; flex-direction: column; gap: 14px; }
+  .info { padding: 18px 20px; }
+  .info h2 { font-family: "Sora", sans-serif; font-weight: 600; font-size: 1.25rem; margin: 0; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  .info h2 .swatch { width: 14px; height: 14px; }
+  .role { color: var(--muted); margin: 4px 0 12px; }
+  .info h3 { font: 600 0.72rem "IBM Plex Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+  .info ul { margin: 0; padding-left: 18px; }
+  .info li { margin: 2px 0; }
+  .stim { margin-top: 14px; width: 100%; font: 600 0.95rem "IBM Plex Sans", sans-serif; background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 11px 14px; cursor: pointer; }
+  .stim:disabled { opacity: 0.5; cursor: default; }
+  .output {
+    margin-top: 10px; background: var(--monitor); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    font-family: "IBM Plex Mono", monospace; font-size: 0.82rem; min-height: 3.6em; white-space: pre-wrap; color: var(--ink);
+  }
+  .output .cursor { display: inline-block; width: 7px; height: 0.9em; background: var(--accent); vertical-align: -1px; animation: blinkc 0.8s step-end infinite; }
+  @keyframes blinkc { 50% { opacity: 0; } }
+  .fact { font-size: 0.88rem; color: var(--muted); margin: 10px 0 0; }
+  .neurons { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+
+  .list { display: flex; flex-direction: column; gap: 6px; }
+  .row {
+    display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; background: var(--ground);
+    border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; cursor: pointer;
+    font: 500 0.9rem "IBM Plex Sans", sans-serif; color: var(--ink);
+  }
+  .row:hover { border-color: var(--accent); }
+  .row.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .row .sub { display: block; font-weight: 400; font-size: 0.8rem; color: var(--muted); }
+  .row .n { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: var(--muted); flex: none; }
+  .steps { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+  .step { display: flex; gap: 8px; align-items: center; font-size: 0.85rem; color: var(--muted); padding: 4px 8px; border-radius: 6px; }
+  .step .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rc); flex: none; }
+  .step.on { background: var(--ground); color: var(--ink); }
+  .step.done { color: var(--ink); }
+
+  .simform { display: flex; gap: 8px; margin-top: 4px; }
+  .simform input {
+    flex: 1; min-width: 0; font: 500 0.95rem "IBM Plex Sans", sans-serif; color: var(--ink); background: var(--ground);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  }
+  .simform input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  .simform button { flex: none; font: 600 0.9rem "IBM Plex Sans", sans-serif; background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 0 16px; cursor: pointer; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { font: 500 0.78rem "IBM Plex Sans", sans-serif; color: var(--muted); background: var(--ground); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  .chip:hover { color: var(--ink); border-color: var(--accent); }
+  .why { font-size: 0.85rem; color: var(--muted); margin: 10px 0 0; }
+  .why b { color: var(--ink); font-weight: 500; }
+  .bars { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+  .bar { display: grid; grid-template-columns: 120px 1fr 38px; align-items: center; gap: 8px; font-size: 0.82rem; }
+  .bar .track { height: 8px; background: var(--ground); border-radius: 999px; overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--rc); border-radius: 999px; transition: width 0.6s ease; }
+  .bar .pct { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .quiz-q { font-family: "Sora", sans-serif; font-weight: 600; font-size: 1.05rem; margin: 0 0 6px; }
+  .quiz-fb { min-height: 1.5em; color: var(--muted); }
+  .quiz-fb.good { color: #2E9E5B; }
+  .quiz-fb.bad { color: #D9534F; }
+  .score { font-family: "IBM Plex Mono", monospace; color: var(--muted); margin-top: 8px; }
+  .fallback { padding: 30px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Human Brain Simulator<small>Drag to rotate · Click a region · Type an action to simulate it</small></h1>
+    <div class="toolbar">
+      <div class="seg" id="viewSeg" role="group" aria-label="View"></div>
+      <div class="seg" id="modeSeg" role="group" aria-label="Mode">
+        <button data-mode="explore" class="on">Explore</button>
+        <button data-mode="simulate">Simulate</button>
+        <button data-mode="quiz">Quiz</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card stage">
+      <div class="stage-top">
+        <span class="eyebrow" id="viewTitle"></span>
+        <span>
+          <button class="ghost on" id="spinBtn">Auto-rotate</button>
+          <button class="ghost on" id="labelBtn">Labels</button>
+          <button class="ghost" id="resetBtn">Reset view</button>
+        </span>
+      </div>
+      <div class="viewport" id="viewport">
+        <canvas id="gl"></canvas>
+        <div id="labels"></div>
+        <div class="hint3d">drag · rotate &nbsp; scroll · zoom &nbsp; click · select</div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="monitor">
+        <div class="monitor-head">
+          <span class="eyebrow">Activity monitor</span>
+          <span class="readout" id="readout">idle · <b>~10 Hz</b> alpha · resting</span>
+        </div>
+        <canvas id="eeg" height="90"></canvas>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="card info" id="infoCard"></div>
+      <div class="card info" id="simCard" hidden></div>
+      <div class="card info" id="quizCard" hidden></div>
+    </aside>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  /* ======================================================================
+     VIEWS — "surface" shows the opaque cortex, "inside" makes it translucent
+     so the deep structures are visible. Regions declare their home view.
+     ====================================================================== */
+  const VIEWS = [
+    { id: "lateral", label: "Surface", title: "Surface · cortex, cerebellum, brainstem" },
+    { id: "medial",  label: "Inside",  title: "Inside · cortex made transparent to show deep structures" },
+  ];
+
+  /* ======================================================================
+     REGIONS — the brain registry. `id` matches the 3D geometry's region tag.
+     ====================================================================== */
+  const REGIONS = [
+    { id: "frontal", name: "Frontal lobe", view: "lateral", color: "#F0876A",
+      role: "Planning, decisions, movement, speech production, personality.",
+      functions: ["Motor cortex — sends movement commands to muscles", "Prefrontal cortex — judgment, planning, impulse control", "Broca's area — putting thoughts into words"],
+      stimulate: "> motor cortex fires\n> right hand twitches, fingers curl\n> subject reports an urge to speak",
+      damage: "Trouble planning, personality changes, impulsivity (the Phineas Gage case), or weakness on the opposite side of the body.",
+      fact: "The prefrontal cortex is the last part of the brain to mature — around age 25.",
+      neurons: "Part of ≈16 billion cortical neurons", hz: 22, band: "beta · focused",
+      clue: "plans your day and decides to move your hand" },
+    { id: "parietal", name: "Parietal lobe", view: "lateral", color: "#5FA8D3",
+      role: "Touch, body position, spatial awareness, numbers.",
+      functions: ["Somatosensory cortex — touch, pressure, pain, temperature", "Mapping where your body is in space", "Attention and reading a map"],
+      stimulate: "> somatosensory cortex fires\n> tingling reported on the right cheek\n> sense of the arm 'floating'",
+      damage: "Hemispatial neglect: ignoring one whole side of the world, e.g. eating only the left half of a plate.",
+      fact: "A distorted 'map' of your body — the homunculus — lives here, with giant lips and hands.",
+      neurons: "Part of ≈16 billion cortical neurons", hz: 14, band: "beta · sensing",
+      clue: "tells you where your arm is without looking" },
+    { id: "temporal", name: "Temporal lobe", view: "lateral", color: "#7FBF7B",
+      role: "Hearing, language comprehension, memory, faces.",
+      functions: ["Auditory cortex — processing sound", "Wernicke's area — understanding words", "Recognising faces and objects"],
+      stimulate: "> auditory cortex fires\n> subject hears a buzzing tone, then a voice\n> a vivid old memory surfaces",
+      damage: "Words sound like a foreign language (Wernicke's aphasia), or faces become unrecognisable (prosopagnosia).",
+      fact: "Stimulating this lobe during surgery can replay memories like a film — Wilder Penfield saw it in the 1930s.",
+      neurons: "Part of ≈16 billion cortical neurons", hz: 10, band: "alpha · listening",
+      clue: "lets you understand the words in a sentence" },
+    { id: "occipital", name: "Occipital lobe", view: "lateral", color: "#B48CDD",
+      role: "Vision — everything you see is built here.",
+      functions: ["Primary visual cortex — edges, orientation, motion", "Colour and shape processing", "Sends 'what' and 'where' streams forward"],
+      stimulate: "> visual cortex fires\n> subject sees flashes of light (phosphenes)\n> a spinning shape appears in the left visual field",
+      damage: "Cortical blindness — the eyes work perfectly but the brain cannot build the picture.",
+      fact: "The right half of what you see is processed by the left occipital lobe, and vice versa.",
+      neurons: "Part of ≈16 billion cortical neurons", hz: 30, band: "gamma · seeing",
+      clue: "turns signals from your eyes into a picture" },
+    { id: "cerebellum", name: "Cerebellum", view: "lateral", color: "#EFBE4B",
+      role: "Balance, coordination, timing, smooth movement.",
+      functions: ["Fine-tunes every movement in real time", "Balance and posture", "Learned motor skills — riding a bike, typing"],
+      stimulate: "> cerebellum fires\n> posture corrects, arm movement smooths out\n> timing of a tapping rhythm improves",
+      damage: "Ataxia: clumsy, staggering movements, slurred speech, tremor when reaching for things.",
+      fact: "It is 10% of the brain's volume but holds ≈69 of its ≈86 billion neurons.",
+      neurons: "≈69 billion neurons", hz: 8, band: "theta · coordinating",
+      clue: "keeps you balanced when you ride a bike" },
+    { id: "brainstem", name: "Brainstem", view: "lateral", color: "#8C9AA8",
+      role: "Life support: breathing, heartbeat, sleep-wake, reflexes.",
+      functions: ["Medulla — breathing and heart rate", "Pons — sleep, arousal, face sensation", "Midbrain — eye movement, reflexes"],
+      stimulate: "> medulla fires\n> heart rate 72 → 88 bpm\n> breathing rate rises, pupils dilate",
+      damage: "Life-threatening — coma or loss of breathing. It is why brainstem death is legal death.",
+      fact: "The brainstem keeps you breathing while you sleep without any conscious effort.",
+      neurons: "Part of ≈0.7 billion subcortical neurons", hz: 4, band: "delta · automatic",
+      clue: "keeps your heart beating while you sleep" },
+    { id: "corpus", name: "Corpus callosum", view: "medial", color: "#D9A066",
+      role: "The bridge: 200 million fibres linking the two hemispheres.",
+      functions: ["Passes information between left and right brain", "Lets the two halves act as one mind"],
+      stimulate: "> callosal fibres fire\n> left-hand touch reported by the speaking (left) hemisphere\n> both hands coordinate",
+      damage: "'Split-brain': the left hand may not know what the right is doing; objects felt with the left hand cannot be named.",
+      fact: "Cutting it was once a treatment for severe epilepsy — and revealed two 'minds' in one head.",
+      neurons: "≈200 million axons (fibres, not cell bodies)", hz: 12, band: "alpha · relaying",
+      clue: "connects the left and right halves of the brain" },
+    { id: "thalamus", name: "Thalamus", view: "medial", color: "#E06C8C",
+      role: "Relay station: almost every sense passes through here.",
+      functions: ["Routes sight, sound, touch to the right cortex", "Gates what reaches awareness", "Central to consciousness and sleep"],
+      stimulate: "> thalamus fires\n> all senses sharpen at once\n> subject snaps to full alertness",
+      damage: "Chronic pain, sensory loss, or permanent unconsciousness.",
+      fact: "Smell is the only sense that skips the thalamus on its way to the cortex.",
+      neurons: "≈50 million neurons (both sides)", hz: 10, band: "alpha · relaying",
+      clue: "is the relay station every sense except smell passes through" },
+    { id: "hypothalamus", name: "Hypothalamus", view: "medial", color: "#F2A65A",
+      role: "Body thermostat: hunger, thirst, temperature, hormones.",
+      functions: ["Keeps temperature, hunger, thirst in balance", "Controls the pituitary and its hormones", "Runs the body clock"],
+      stimulate: "> hypothalamus fires\n> sudden hunger, skin flushes warm\n> stress hormone (cortisol) released",
+      damage: "Body temperature swings, endless hunger or none, disrupted sleep cycles.",
+      fact: "It is only about the size of an almond but controls the whole endocrine system.",
+      neurons: "≈few million neurons", hz: 6, band: "theta · regulating",
+      clue: "makes you feel hungry and keeps your temperature steady" },
+    { id: "pituitary", name: "Pituitary gland", view: "medial", color: "#C77DFF",
+      role: "Master gland: hormones for growth, stress, reproduction.",
+      functions: ["Growth hormone", "Thyroid, adrenal and sex hormone control", "Oxytocin and water balance"],
+      stimulate: "> pituitary fires\n> growth hormone pulse detected\n> adrenal glands ramp up cortisol",
+      damage: "Growth problems, fatigue, infertility, extreme thirst.",
+      fact: "It sits in a bony cradle called the 'Turkish saddle' (sella turcica).",
+      neurons: "Gland cells, not neurons — hormone secreting", hz: 3, band: "delta · endocrine",
+      clue: "is the master gland that releases growth hormone" },
+    { id: "hippocampus", name: "Hippocampus", view: "medial", color: "#3FB8AF",
+      role: "Memory maker: turns today's experiences into lasting memories.",
+      functions: ["Forms new long-term memories", "Spatial memory and navigation", "Replays the day during sleep"],
+      stimulate: "> hippocampus fires\n> place cells map the room\n> subject recalls yesterday's lunch in detail",
+      damage: "Anterograde amnesia — no new memories form (patient H.M. lived like this for 55 years).",
+      fact: "London taxi drivers who memorise the city grow a measurably larger hippocampus.",
+      neurons: "≈40 million neurons (both sides)", hz: 7, band: "theta · remembering",
+      clue: "turns what happened today into a memory you keep" },
+    { id: "amygdala", name: "Amygdala", view: "medial", color: "#E45757",
+      role: "Threat detector: fear, emotion, fight-or-flight trigger.",
+      functions: ["Detects danger in a fraction of a second", "Tags memories with emotion", "Triggers the stress response"],
+      stimulate: "> amygdala fires\n> heart pounds, palms sweat\n> a sense of dread with no obvious cause",
+      damage: "Fearlessness — one patient (S.M.) could handle snakes and spiders without alarm.",
+      fact: "It can react to a snake shape before the visual cortex has finished 'seeing' it.",
+      neurons: "≈12 million neurons (both sides)", hz: 18, band: "beta · alarmed",
+      clue: "makes your heart pound when something scares you" },
+  ];
+
+  /* ======================================================================
+     SCENARIOS — sequences of regions firing: [region id, ms, caption]
+     ====================================================================== */
+  const SCENARIOS = [
+    { id: "read", name: "Reading this sentence", steps: [
+      ["occipital", 1500, "Eyes send letter shapes to the visual cortex"],
+      ["temporal", 1500, "Wernicke's area decodes the words' meaning"],
+      ["frontal", 1500, "Broca's area voices it silently; you decide what it means"],
+      ["hippocampus", 1500, "The idea is filed away for later"],
+    ]},
+    { id: "catch", name: "Catching a ball", steps: [
+      ["occipital", 1200, "You see the ball leave their hand"],
+      ["parietal", 1200, "Its path and your hand's position are mapped"],
+      ["frontal", 1200, "Motor cortex fires the reach command"],
+      ["cerebellum", 1200, "Timing and grip are fine-tuned mid-flight"],
+      ["parietal", 1000, "Touch confirms: caught"],
+    ]},
+    { id: "scare", name: "A sudden loud bang", steps: [
+      ["thalamus", 1000, "Sound arrives at the relay station"],
+      ["amygdala", 1300, "Threat! The alarm fires before you know why"],
+      ["hypothalamus", 1300, "Adrenaline and cortisol are ordered"],
+      ["brainstem", 1300, "Heart and breathing speed up"],
+      ["frontal", 1500, "Prefrontal cortex: 'it was just a door' — calm down"],
+    ]},
+    { id: "sleep", name: "Falling asleep", steps: [
+      ["hypothalamus", 1500, "The body clock signals night"],
+      ["thalamus", 1500, "Sensory gates close; the world fades"],
+      ["hippocampus", 1500, "The day's memories replay and consolidate"],
+      ["brainstem", 1500, "Breathing and heartbeat run on autopilot"],
+    ]},
+    { id: "music", name: "Hearing your favourite song", steps: [
+      ["temporal", 1400, "Auditory cortex decodes melody and lyrics"],
+      ["hippocampus", 1400, "A memory of where you first heard it"],
+      ["amygdala", 1200, "The emotional hit — goosebumps"],
+      ["cerebellum", 1200, "Your foot starts tapping in time"],
+      ["frontal", 1200, "You sing along"],
+    ]},
+  ];
+
+  /* ======================================================================
+     ACTION LEXICON — free-text simulation. Each entry: words that trigger it
+     (matched as word prefixes, so "run" also matches "running"), the regions
+     it recruits with a weight, and a label for the explanation.
+     Add a line here to teach the simulator a new kind of action.
+     ====================================================================== */
+  const LEXICON = [
+    { why: "visual input", r: { thalamus: 0.6, occipital: 1 },
+      k: ["see", "look", "watch", "stare", "eye", "color", "colour", "light", "picture", "screen", "tv", "movie", "video", "read", "face", "bright", "dark"] },
+    { why: "sound input", r: { thalamus: 0.6, temporal: 1 },
+      k: ["hear", "listen", "music", "song", "sound", "noise", "voice", "conversation", "bang", "loud", "podcast", "radio", "ear"] },
+    { why: "touch and body sense", r: { thalamus: 0.5, parietal: 1 },
+      k: ["touch", "feel", "hold", "grab", "pain", "hurt", "hot", "itch", "tickle", "texture", "hand", "finger", "soft", "rough", "massage"] },
+    { why: "smell, taste and appetite", r: { temporal: 0.6, hypothalamus: 0.7, amygdala: 0.3 },
+      k: ["smell", "sniff", "odor", "odour", "scent", "perfume", "taste", "flavor", "flavour", "eat", "food", "pizza", "chocolate", "drink", "coffee", "candy", "dinner", "lunch", "breakfast", "snack"] },
+    { why: "language (Wernicke's and Broca's areas)", r: { temporal: 0.9, frontal: 0.8 },
+      k: ["read", "word", "write", "speak", "say", "talk", "language", "sentence", "text", "letter", "book", "essay", "spanish", "english", "name", "chat", "argue", "explain", "story", "poem", "present"] },
+    { why: "reasoning and planning", r: { frontal: 1, parietal: 0.6 },
+      k: ["think", "plan", "decide", "choose", "solve", "problem", "math", "calculat", "count", "number", "logic", "puzzle", "chess", "study", "focus", "concentrat", "homework", "exam", "test", "strategy", "code", "program", "budget", "organize", "organise", "debate"] },
+    { why: "memory", r: { hippocampus: 1, temporal: 0.6 },
+      k: ["remember", "recall", "memor", "learn", "forget", "recogni", "familiar", "nostalgi", "childhood", "revise", "flashcard", "navigate", "directions", "map", "route", "way home"] },
+    { why: "emotion", r: { amygdala: 1, hypothalamus: 0.6, frontal: 0.4 },
+      k: ["scare", "scary", "fear", "afraid", "terrif", "panic", "spider", "snake", "horror", "danger", "threat", "nervous", "anxi", "stress", "worr", "angry", "anger", "rage", "fight", "cry", "sad", "happy", "joy", "excit", "love", "hug", "kiss", "laugh", "funny", "joke", "embarrass", "jealous", "surprise"] },
+    { why: "movement", r: { frontal: 1, cerebellum: 0.9, parietal: 0.6, brainstem: 0.4 },
+      k: ["run", "walk", "jump", "danc", "throw", "catch", "kick", "swim", "climb", "lift", "push", "pull", "punch", "type", "play", "piano", "guitar", "drum", "draw", "paint", "cook", "drive", "bike", "ride", "ski", "skate", "exercise", "workout", "gym", "sport", "soccer", "football", "basketball", "tennis", "juggl", "hit", "shoot", "build", "carry", "clean", "brush", "write", "text"] },
+    { why: "balance", r: { cerebellum: 1, brainstem: 0.5, parietal: 0.4 },
+      k: ["balanc", "stand", "posture", "dizzy", "spin", "coordinat", "yoga", "surf", "tightrope", "skateboard", "stairs", "trip", "stumble"] },
+    { why: "sleep and arousal", r: { hypothalamus: 1, thalamus: 0.7, brainstem: 0.8, hippocampus: 0.5 },
+      k: ["sleep", "nap", "tired", "dream", "yawn", "wake", "rest", "relax", "meditat", "bed", "doze", "drowsy"] },
+    { why: "life support and reflexes", r: { brainstem: 1, hypothalamus: 0.7 },
+      k: ["breath", "heart", "pulse", "blood", "swallow", "cough", "sneeze", "reflex", "blink", "sweat", "shiver", "temperature", "fever", "cold", "heat", "vomit", "hiccup"] },
+    { why: "hormones and drives", r: { hypothalamus: 1, pituitary: 0.9 },
+      k: ["hungry", "hunger", "thirst", "appetite", "diet", "hormone", "growth", "puberty", "pregnan", "adrenalin", "cortisol", "fasting", "craving"] },
+    { why: "two-sided coordination", r: { corpus: 1 },
+      k: ["both hands", "two hands", "clap", "juggl", "piano", "guitar", "drum", "left", "right", "coordinat", "tie", "knit", "type", "swim", "row", "climb"] },
+    { why: "singing (hearing, speech and breath)", r: { temporal: 0.9, frontal: 0.8, cerebellum: 0.5, brainstem: 0.4 },
+      k: ["sing", "hum", "whistle", "karaoke", "rap"] },
+    { why: "screen use", r: { occipital: 0.9, frontal: 0.8, amygdala: 0.4, hippocampus: 0.3 },
+      k: ["game", "gaming", "phone", "scroll", "tiktok", "instagram", "youtube", "netflix", "computer", "laptop"] },
+  ];
+  // Order regions fire in, and the caption each contributes to the playback.
+  const PHASE = { thalamus: 0, occipital: 1, temporal: 1, parietal: 1, hippocampus: 2, amygdala: 2, corpus: 2.5, hypothalamus: 2.6, pituitary: 2.7, frontal: 3, cerebellum: 4, brainstem: 4.5 };
+  const CAPTION = {
+    thalamus: "relays the incoming signals to the cortex",
+    occipital: "builds the picture of what you see",
+    temporal: "decodes sounds, words and what things are",
+    parietal: "tracks touch and where your body is in space",
+    hippocampus: "pulls up related memories and files new ones",
+    amygdala: "tags the moment with emotion",
+    corpus: "syncs the left and right hemispheres",
+    hypothalamus: "adjusts drives, hormones and body state",
+    pituitary: "releases hormones into the bloodstream",
+    frontal: "plans, decides and fires the motor commands",
+    cerebellum: "smooths and times every movement",
+    brainstem: "adjusts heart rate and breathing to match",
+  };
+  function simulateAction(text) {
+    const t = " " + text.toLowerCase().replace(/[^a-z' ]+/g, " ") + " ";
+    const weights = {}, matched = new Map();
+    for (const entry of LEXICON) {
+      const hits = entry.k.filter(k => new RegExp("\\b" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(t));
+      if (!hits.length) continue;
+      matched.set(entry.why, hits);
+      for (const id in entry.r) weights[id] = (weights[id] || 0) + entry.r[id];
+    }
+    const generic = matched.size === 0;
+    if (generic) Object.assign(weights, { thalamus: 0.5, parietal: 0.6, frontal: 1, cerebellum: 0.6 });
+    const max = Math.max(...Object.values(weights));
+    for (const id in weights) weights[id] = Math.round(weights[id] / max * 100) / 100;
+    const order = Object.keys(weights).sort((a, b) => PHASE[a] - PHASE[b] || weights[b] - weights[a]);
+    const steps = order.map(id => [id, 700 + 600 * weights[id], CAPTION[id]]);
+    return { weights, matched, generic, steps };
+  }
+
+  /* ============================ helpers ============================ */
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+  const byId = Object.fromEntries(REGIONS.map(r => [r.id, r]));
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- 3D simplex noise (Gustavson) for the gyri ---------- */
+  const noise3 = (() => {
+    const grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+    const p = new Uint8Array(256); let seed = 4242;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 256; i++) p[i] = i;
+    for (let i = 255; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = p[i]; p[i] = p[j]; p[j] = t; }
+    const perm = new Uint8Array(512), pm = new Uint8Array(512);
+    for (let i = 0; i < 512; i++) { perm[i] = p[i & 255]; pm[i] = perm[i] % 12; }
+    const F3 = 1 / 3, G3 = 1 / 6;
+    const dot = (g, x, y, z) => g[0] * x + g[1] * y + g[2] * z;
+    return function (xin, yin, zin) {
+      const s = (xin + yin + zin) * F3;
+      const i = Math.floor(xin + s), j = Math.floor(yin + s), k = Math.floor(zin + s);
+      const t = (i + j + k) * G3;
+      const x0 = xin - (i - t), y0 = yin - (j - t), z0 = zin - (k - t);
+      let i1, j1, k1, i2, j2, k2;
+      if (x0 >= y0) {
+        if (y0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
+        else if (x0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1; }
+        else { i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1; }
+      } else {
+        if (y0 < z0) { i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1; }
+        else if (x0 < z0) { i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1; }
+        else { i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
+      }
+      const x1 = x0 - i1 + G3, y1 = y0 - j1 + G3, z1 = z0 - k1 + G3;
+      const x2 = x0 - i2 + 2 * G3, y2 = y0 - j2 + 2 * G3, z2 = z0 - k2 + 2 * G3;
+      const x3 = x0 - 1 + 3 * G3, y3 = y0 - 1 + 3 * G3, z3 = z0 - 1 + 3 * G3;
+      const ii = i & 255, jj = j & 255, kk = k & 255;
+      const g0 = pm[ii + perm[jj + perm[kk]]], g1 = pm[ii + i1 + perm[jj + j1 + perm[kk + k1]]];
+      const g2 = pm[ii + i2 + perm[jj + j2 + perm[kk + k2]]], g3 = pm[ii + 1 + perm[jj + 1 + perm[kk + 1]]];
+      let n = 0, t0;
+      t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0; if (t0 > 0) { t0 *= t0; n += t0 * t0 * dot(grad3[g0], x0, y0, z0); }
+      t0 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1; if (t0 > 0) { t0 *= t0; n += t0 * t0 * dot(grad3[g1], x1, y1, z1); }
+      t0 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2; if (t0 > 0) { t0 *= t0; n += t0 * t0 * dot(grad3[g2], x2, y2, z2); }
+      t0 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3; if (t0 > 0) { t0 *= t0; n += t0 * t0 * dot(grad3[g3], x3, y3, z3); }
+      return 32 * n;
+    };
+  })();
+  const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+
+  /* ======================================================================
+     BRAIN 3D — builds the meshes procedurally and exposes:
+       setView(id) · setActive(id, dim) · clear() · sparks(id) · centroids
+     ====================================================================== */
+  const brain3d = (() => {
+    const viewport = $("#viewport"), canvas = $("#gl"), labelsBox = $("#labels");
+    if (!window.THREE) {
+      viewport.innerHTML = '<div class="fallback">3D view could not load (three.js is blocked on this network).</div>';
+      return null;
+    }
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 50);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.85));
+    const key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(2.5, 3, 3.5); scene.add(key);
+    const fill = new THREE.DirectionalLight(0xdfe8ff, 0.35); fill.position.set(-3, -1, -2.5); scene.add(fill);
+
+    const col = hex => new THREE.Color(hex).convertSRGBToLinear();
+    const TISSUE = col("#E6B8BC"), DIM = col("#B9B3B6");
+    const cortexRegions = ["frontal", "parietal", "temporal", "occipital"];
+    const regionMeshes = {};   // id -> [mesh] (whole-mesh regions)
+    const regionVerts = {};    // id -> [{mesh, indices[]}] for sparks + centroids
+    const centroids = {};      // id -> { left: Vector3, right: Vector3 } or { any }
+    const pushVerts = (id, mesh, indices) => (regionVerts[id] = regionVerts[id] || []).push({ mesh, indices });
+
+    // ---- Cortex hemispheres
+    const hemis = [];
+    function buildHemisphere(side) {
+      const geo = new THREE.SphereGeometry(1, 120, 84);
+      const pos = geo.attributes.position, n = pos.count;
+      const ridx = new Float32Array(n), colors = new Float32Array(n * 3);
+      const lists = [[], [], [], []], v = new THREE.Vector3();
+      for (let i = 0; i < n; i++) {
+        v.fromBufferAttribute(pos, i);
+        const lat = v.x * side;                                       // +1 = outer surface
+        const tScore = smooth(-0.02, -0.3, v.y) * smooth(0.75, 0.45, Math.abs(v.z)) * smooth(0.05, 0.45, lat);
+        let lobe;
+        if (tScore > 0.4) lobe = 2;
+        else if (v.z < -0.5) lobe = 3;
+        else if (v.z > 0.32 - 0.25 * v.y) lobe = 0;
+        else lobe = 1;
+        ridx[i] = lobe; lists[lobe].push(i);
+        const nx = v.x * side;                                        // mirrored noise → symmetric hemispheres
+        const r1 = 1 - Math.abs(noise3(nx * 3.1 + 3.7, v.y * 3.1, v.z * 3.1));
+        const r2 = 1 - Math.abs(noise3(nx * 6.3 + 9.1, v.y * 6.3, v.z * 6.3));
+        const wr = (r1 - 0.5) * 0.09 + (r2 - 0.5) * 0.035;
+        const s = 1 + wr + tScore * 0.11;
+        let x = v.x * s * 0.55, y = v.y * s * 0.78, z = v.z * s * 1.12;
+        if (y < 0) y *= 0.82;
+        if (v.x * side < 0) x *= 0.45;                                // flatten the medial face
+        pos.setXYZ(i, x + side * 0.27, y, z);                         // medial faces almost touch at the midline
+      }
+      geo.setAttribute("ridx", new THREE.BufferAttribute(ridx, 1));
+      geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      geo.computeVertexNormals();
+      const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0.0, transparent: true, opacity: 1 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.userData.cortex = true; mesh.userData.side = side; mesh.renderOrder = 10;
+      scene.add(mesh); hemis.push(mesh);
+      cortexRegions.forEach((id, k) => {
+        pushVerts(id, mesh, lists[k]);
+        const c = new THREE.Vector3();
+        for (const i of lists[k]) c.add(v.fromBufferAttribute(pos, i));
+        c.divideScalar(lists[k].length || 1);
+        (centroids[id] = centroids[id] || {})[side < 0 ? "left" : "right"] = c;
+      });
+    }
+    buildHemisphere(-1); buildHemisphere(1);
+
+    // ---- Whole-mesh regions
+    function addRegionMesh(id, geo, opts = {}) {
+      const r = byId[id];
+      const mat = new THREE.MeshStandardMaterial({ color: col(r.color), roughness: 0.5, metalness: 0.05, emissive: col(r.color), emissiveIntensity: 0 });
+      const mesh = new THREE.Mesh(geo, mat);
+      if (opts.position) mesh.position.copy(opts.position);
+      if (opts.rotation) mesh.rotation.copy(opts.rotation);
+      if (opts.scale) mesh.scale.copy(opts.scale);
+      mesh.userData.region = id; mesh.userData.deep = !!opts.deep;
+      scene.add(mesh); mesh.updateMatrixWorld();
+      (regionMeshes[id] = regionMeshes[id] || []).push(mesh);
+      const idx = Array.from({ length: geo.attributes.position.count }, (_, i) => i);
+      pushVerts(id, mesh, idx);
+      const c = new THREE.Vector3(); geo.computeBoundingBox(); geo.boundingBox.getCenter(c); mesh.localToWorld(c);
+      const cs = centroids[id] = centroids[id] || {};
+      if (opts.side) cs[opts.side] = c; else cs.any = c;
+      return mesh;
+    }
+    const V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const E = (x, y, z) => new THREE.Euler(x, y, z);
+
+    // Cerebellum — bumpy ellipsoids with horizontal folia
+    for (const side of [-1, 1]) {
+      const geo = new THREE.SphereGeometry(1, 72, 52), pos = geo.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        const r = 1 - Math.abs(noise3(v.x * side * 2.4 + 1.3, v.y * 15, v.z * 2.4));
+        const s = 1 + (r - 0.5) * 0.07;
+        pos.setXYZ(i, v.x * s, v.y * s, v.z * s);
+      }
+      geo.computeVertexNormals();
+      addRegionMesh("cerebellum", geo, { position: V(side * 0.22, -0.5, -0.72), scale: V(0.31, 0.21, 0.28), side: side < 0 ? "left" : "right" });
+    }
+    // Brainstem — tapered column + pons bulge
+    addRegionMesh("brainstem", new THREE.CylinderGeometry(0.11, 0.075, 0.9, 28, 6), { position: V(0, -0.55, -0.24), rotation: E(0.36, 0, 0) });
+    addRegionMesh("brainstem", new THREE.SphereGeometry(0.13, 32, 24), { position: V(0, -0.43, -0.13), scale: V(1, 0.85, 1) });
+
+    // Deep structures
+    for (const side of [-1, 1]) {
+      const sd = side < 0 ? "left" : "right";
+      addRegionMesh("thalamus", new THREE.SphereGeometry(1, 32, 24), { position: V(side * 0.12, 0.02, -0.02), scale: V(0.13, 0.11, 0.19), deep: true, side: sd });
+      addRegionMesh("amygdala", new THREE.SphereGeometry(1, 24, 18), { position: V(side * 0.34, -0.2, 0.3), scale: V(0.075, 0.065, 0.08), deep: true, side: sd });
+      const hp = new THREE.CatmullRomCurve3([V(side * 0.36, -0.24, 0.16), V(side * 0.38, -0.22, -0.05), V(side * 0.34, -0.14, -0.25), V(side * 0.26, -0.02, -0.38)]);
+      addRegionMesh("hippocampus", new THREE.TubeGeometry(hp, 40, 0.05, 14, false), { deep: true, side: sd });
+    }
+    addRegionMesh("hypothalamus", new THREE.SphereGeometry(1, 28, 20), { position: V(0, -0.2, 0.12), scale: V(0.12, 0.07, 0.1), deep: true });
+    addRegionMesh("pituitary", new THREE.SphereGeometry(0.06, 24, 18), { position: V(0, -0.4, 0.2), deep: true });
+    addRegionMesh("pituitary", new THREE.CylinderGeometry(0.018, 0.018, 0.14, 12), { position: V(0, -0.31, 0.17), rotation: E(0.2, 0, 0), deep: true });
+    const cc = new THREE.CatmullRomCurve3([V(0, 0.06, 0.5), V(0, 0.28, 0.32), V(0, 0.38, 0.02), V(0, 0.3, -0.34), V(0, 0.1, -0.5)]);
+    addRegionMesh("corpus", new THREE.TubeGeometry(cc, 48, 0.05, 14, false), { scale: V(2.4, 1, 1), deep: true });
+
+    // ---- Colouring
+    let activeId = null, dimOthers = false, view = "lateral", activity = null;
+    const tmp = new THREE.Color(), WHITE = new THREE.Color(1, 1, 1);
+    function baseColorFor(id) { return tmp.copy(TISSUE).lerp(col(byId[id].color), 0.6).clone(); }
+    // resting colour of a region given the current activity map / dimming state
+    function restColor(id) {
+      const c = baseColorFor(id);
+      if (activity) {
+        const w = activity[id] || 0;
+        return w > 0 ? c.lerp(col(byId[id].color).lerp(WHITE, 0.15), 0.85 * w) : c.lerp(DIM, 0.6);
+      }
+      if (dimOthers && id !== activeId) c.lerp(DIM, 0.7);
+      return c;
+    }
+    function recolorCortex() {
+      for (const mesh of hemis) {
+        const ridx = mesh.geometry.attributes.ridx, color = mesh.geometry.attributes.color;
+        const palette = cortexRegions.map(restColor);
+        for (let i = 0; i < ridx.count; i++) {
+          const c = palette[ridx.getX(i)];
+          color.setXYZ(i, c.r, c.g, c.b);
+        }
+        color.needsUpdate = true;
+      }
+    }
+    function recolorMeshes() {
+      for (const id in regionMeshes) for (const m of regionMeshes[id]) {
+        m.material.color.copy(col(byId[id].color));
+        if (activity) { const w = activity[id] || 0; if (!w) m.material.color.lerp(DIM, 0.6); }
+        else if (dimOthers && id !== activeId) m.material.color.lerp(DIM, 0.7);
+        if (id !== activeId) m.material.emissiveIntensity = activity ? 0.5 * (activity[id] || 0) : 0;
+      }
+    }
+    function pulseActive(t) {
+      if (!activeId) return;
+      const k = reduceMotion ? 0.7 : 0.55 + 0.45 * Math.sin(t * 6);
+      if (cortexRegions.includes(activeId)) {
+        const bright = col(byId[activeId].color).lerp(new THREE.Color(1, 1, 1), 0.25 * k);
+        for (const { mesh, indices } of regionVerts[activeId]) {
+          const color = mesh.geometry.attributes.color;
+          for (const i of indices) color.setXYZ(i, bright.r, bright.g, bright.b);
+          color.needsUpdate = true;
+        }
+      } else {
+        for (const m of regionMeshes[activeId]) m.material.emissiveIntensity = 0.25 + 0.55 * k;
+      }
+    }
+    function setActive(id, dim = false) { activeId = id; dimOthers = dim; recolorCortex(); recolorMeshes(); updateLabels(true); }
+    function setActivity(map) { activity = map; activeId = null; dimOthers = false; recolorCortex(); recolorMeshes(); updateLabels(true); }
+    function clear() { activeId = null; dimOthers = false; activity = null; recolorCortex(); recolorMeshes(); updateLabels(true); }
+    function setView(id) {
+      view = id;
+      const inside = id === "medial";
+      for (const m of hemis) { m.material.opacity = inside ? 0.14 : 1; m.material.depthWrite = !inside; }
+      for (const rid in regionMeshes) for (const m of regionMeshes[rid]) if (!m.userData.deep) { m.material.transparent = true; m.material.opacity = inside ? 0.35 : 1; m.material.depthWrite = !inside; }
+      updateLabels(true);
+    }
+
+    // ---- Neural sparks
+    const sparkSystems = [];
+    function sparks(id, count = 60) {
+      if (reduceMotion || !regionVerts[id]) return;
+      const pts = [], dirs = [];
+      const all = regionVerts[id];
+      for (let k = 0; k < count; k++) {
+        const { mesh, indices } = all[Math.floor(Math.random() * all.length)];
+        const i = indices[Math.floor(Math.random() * indices.length)];
+        const p = new THREE.Vector3().fromBufferAttribute(mesh.geometry.attributes.position, i);
+        mesh.localToWorld(p);
+        pts.push(p.x, p.y, p.z);
+        const d = p.clone().normalize().multiplyScalar(0.12 + Math.random() * 0.1);
+        dirs.push(d.x, d.y, d.z);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+      const mat = new THREE.PointsMaterial({ size: 0.045, color: 0xffffff, transparent: true, opacity: 1, depthTest: false });
+      const ps = new THREE.Points(geo, mat); ps.renderOrder = 20;
+      scene.add(ps);
+      sparkSystems.push({ ps, dirs, born: performance.now(), base: pts.slice() });
+    }
+    function tickSparks(now) {
+      for (let s = sparkSystems.length - 1; s >= 0; s--) {
+        const sys = sparkSystems[s], t = (now - sys.born) / 1100;
+        if (t >= 1) { scene.remove(sys.ps); sys.ps.geometry.dispose(); sys.ps.material.dispose(); sparkSystems.splice(s, 1); continue; }
+        const pos = sys.ps.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) pos.setXYZ(i, sys.base[i * 3] + sys.dirs[i * 3] * t, sys.base[i * 3 + 1] + sys.dirs[i * 3 + 1] * t, sys.base[i * 3 + 2] + sys.dirs[i * 3 + 2] * t);
+        pos.needsUpdate = true;
+        sys.ps.material.opacity = 1 - t;
+        sys.ps.material.size = 0.03 + 0.05 * (1 - t);
+      }
+    }
+
+    // ---- Orbit camera (drag / wheel / touch), auto-rotate
+    const orbit = { theta: -1.25, phi: 1.25, radius: 4.2, target: new THREE.Vector3(0, -0.15, 0) };
+    const HOME = { ...orbit, target: orbit.target.clone() };
+    let dragging = false, last = null, moved = 0, lastInput = 0, autoSpin = true;
+    function updateCamera() {
+      const { theta, phi, radius, target } = orbit;
+      camera.position.set(target.x + radius * Math.sin(phi) * Math.sin(theta), target.y + radius * Math.cos(phi), target.z + radius * Math.sin(phi) * Math.cos(theta));
+      camera.lookAt(target);
+    }
+    viewport.addEventListener("pointerdown", e => { dragging = true; moved = 0; last = [e.clientX, e.clientY]; viewport.setPointerCapture(e.pointerId); viewport.classList.add("dragging"); lastInput = performance.now(); });
+    viewport.addEventListener("pointermove", e => {
+      if (!dragging) return;
+      const dx = e.clientX - last[0], dy = e.clientY - last[1]; last = [e.clientX, e.clientY];
+      moved += Math.abs(dx) + Math.abs(dy);
+      orbit.theta -= dx * 0.008; orbit.phi = Math.min(2.9, Math.max(0.25, orbit.phi - dy * 0.008));
+      lastInput = performance.now();
+    });
+    viewport.addEventListener("pointerup", e => {
+      dragging = false; viewport.classList.remove("dragging");
+      if (moved < 6) pick(e);
+    });
+    viewport.addEventListener("pointercancel", () => { dragging = false; viewport.classList.remove("dragging"); });
+    viewport.addEventListener("wheel", e => { e.preventDefault(); orbit.radius = Math.min(6.5, Math.max(1.9, orbit.radius * (1 + Math.sign(e.deltaY) * 0.08))); lastInput = performance.now(); }, { passive: false });
+    $("#spinBtn").addEventListener("click", e => { autoSpin = !autoSpin; e.currentTarget.classList.toggle("on", autoSpin); });
+    $("#resetBtn").addEventListener("click", () => { Object.assign(orbit, { theta: HOME.theta, phi: HOME.phi, radius: HOME.radius }); });
+
+    // ---- Picking
+    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+    let onPick = () => {};
+    function pick(e) {
+      const rect = canvas.getBoundingClientRect();
+      ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      const targets = scene.children.filter(o => o.isMesh && (view === "lateral" || !o.userData.cortex));
+      const hits = ray.intersectObjects(targets, false);
+      if (!hits.length) return;
+      const h = hits[0];
+      const id = h.object.userData.region || cortexRegions[h.object.geometry.attributes.ridx.getX(h.face.a)];
+      onPick(id);
+    }
+
+    // ---- Labels (HTML, projected each frame)
+    let showLabels = true;
+    const labelEls = {};
+    for (const r of REGIONS) {
+      const el = document.createElement("div");
+      el.className = "lbl3d"; el.style.setProperty("--rc", r.color); el.textContent = r.name;
+      el.addEventListener("pointerdown", e => e.stopPropagation());
+      el.addEventListener("click", () => onPick(r.id));
+      labelsBox.appendChild(el); labelEls[r.id] = el;
+    }
+    $("#labelBtn").addEventListener("click", e => { showLabels = !showLabels; e.currentTarget.classList.toggle("on", showLabels); });
+    const proj = new THREE.Vector3(), camDir = new THREE.Vector3();
+    function updateLabels(force) {
+      const rect = canvas.getBoundingClientRect();
+      camDir.copy(camera.position).sub(orbit.target).normalize();
+      for (const r of REGIONS) {
+        const el = labelEls[r.id];
+        const deep = r.view === "medial";
+        let anchor;
+        const cs = centroids[r.id];
+        if (!cs) { el.hidden = true; continue; }
+        if (cs.any) anchor = cs.any;
+        else anchor = (camera.position.x < 0 ? cs.left : cs.right) || cs.left || cs.right;
+        const facing = anchor.clone().sub(orbit.target).normalize().dot(camDir);
+        const lit = r.id === activeId || (activity && activity[r.id] > 0);
+        const visible = showLabels && (deep ? (view === "medial" || lit) : (view === "lateral" ? facing > 0.05 : (r.id === activeId || lit)));
+        el.hidden = !visible;
+        if (!visible) continue;
+        proj.copy(anchor).project(camera);
+        el.style.left = ((proj.x + 1) / 2 * rect.width) + "px";
+        el.style.top = ((1 - proj.y) / 2 * rect.height) + "px";
+        el.classList.toggle("on", r.id === activeId);
+      }
+      // greedy de-overlap: push a label down until it clears the ones placed above it
+      const placed = [];
+      for (const el of Object.values(labelEls).filter(e => !e.hidden).sort((a, b) => parseFloat(a.style.top) - parseFloat(b.style.top))) {
+        const w = el.offsetWidth, h = el.offsetHeight;
+        let x = parseFloat(el.style.left) - w / 2, y = parseFloat(el.style.top) - h / 2;
+        for (const q of placed) {
+          if (x < q.x + q.w && x + w > q.x && y < q.y + q.h && y + h > q.y) y = q.y + q.h + 3;
+        }
+        el.style.top = (y + h / 2) + "px";
+        placed.push({ x, y, w, h });
+      }
+    }
+
+    // ---- Resize + render loop
+    function resize() {
+      const w = viewport.clientWidth, h = viewport.clientHeight;
+      if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
+        renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+      }
+    }
+    new ResizeObserver(resize).observe(viewport);
+    let prev = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+      if (autoSpin && !dragging && !reduceMotion && now - lastInput > 3500) orbit.theta += 0.18 * dt;
+      resize(); updateCamera(); pulseActive(now / 1000); tickSparks(now); updateLabels();
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    recolorCortex(); recolorMeshes(); resize(); updateCamera();
+    requestAnimationFrame(frame);
+
+    return { setView, setActive, setActivity, clear, sparks, set onPick(fn) { onPick = fn; } };
+  })();
+
+  /* ============================ APP ============================ */
+  let mode = "explore", currentView = "lateral", activeId = null, scenarioTimer = null, typingTimer = null;
+
+  const viewSeg = $("#viewSeg");
+  for (const v of VIEWS) {
+    const b = document.createElement("button"); b.textContent = v.label; b.dataset.view = v.id;
+    b.addEventListener("click", () => showView(v.id)); viewSeg.appendChild(b);
+  }
+  function showView(id) {
+    currentView = id;
+    $$("#viewSeg button").forEach(b => b.classList.toggle("on", b.dataset.view === id));
+    $("#viewTitle").textContent = VIEWS.find(v => v.id === id).title;
+    brain3d && brain3d.setView(id);
+    renderLegend();
+  }
+  function renderLegend() {
+    const box = $("#legend"); box.innerHTML = "";
+    for (const r of REGIONS.filter(r => currentView === "medial" ? true : r.view === "lateral")) {
+      const b = document.createElement("button");
+      b.innerHTML = `<span class="swatch" style="--rc:${r.color}"></span>${r.name}`;
+      b.addEventListener("click", () => selectRegion(r.id)); box.appendChild(b);
+    }
+  }
+
+  function light(id, { dimOthers = false } = {}) {
+    const r = byId[id];
+    if (r.view === "medial" && currentView !== "medial") showView("medial");
+    brain3d && brain3d.setActive(id, dimOthers);
+    eeg.set(r);
+  }
+  function clearActive() { brain3d && brain3d.clear(); }
+  function sparks(id) { brain3d && brain3d.sparks(id); }
+  function selectRegion(id) {
+    if (mode === "quiz") { quiz.answer(id); return; }
+    if (mode === "simulate") return;
+    activeId = id; light(id); renderInfo(byId[id]);
+  }
+  if (brain3d) brain3d.onPick = selectRegion;
+
+  // ---- Info card
+  function renderInfo(r) {
+    $("#infoCard").innerHTML = `
+      <div class="eyebrow">${VIEWS.find(v => v.id === r.view).label}</div>
+      <h2><span class="swatch" style="--rc:${r.color}"></span>${r.name}</h2>
+      <p class="role">${r.role}</p>
+      <h3>What it does</h3>
+      <ul>${r.functions.map(f => `<li>${f}</li>`).join("")}</ul>
+      <button class="stim" id="stimBtn">⚡ Stimulate ${r.name.toLowerCase()}</button>
+      <div class="output" id="output">Ready. Press stimulate to fire this region.</div>
+      <h3>If it is damaged</h3>
+      <p style="margin:0">${r.damage}</p>
+      <p class="fact">${r.fact}</p>
+      <div class="neurons">${r.neurons}</div>`;
+    $("#stimBtn").addEventListener("click", () => stimulate(r));
+  }
+  function stimulate(r) {
+    light(r.id, { dimOthers: true });
+    sparks(r.id); setTimeout(() => sparks(r.id), 450); setTimeout(() => sparks(r.id), 900);
+    typeOut($("#output"), r.stimulate);
+    const btn = $("#stimBtn"); btn.disabled = true;
+    setTimeout(() => { btn.disabled = false; light(r.id); }, 2600);
+  }
+  function typeOut(el, text) {
+    clearInterval(typingTimer); let i = 0;
+    el.innerHTML = '<span class="cursor"></span>';
+    typingTimer = setInterval(() => {
+      i++; el.innerHTML = text.slice(0, i).replace(/</g, "&lt;") + '<span class="cursor"></span>';
+      if (i >= text.length) clearInterval(typingTimer);
+    }, 22);
+  }
+
+  // ---- Simulate: free text → regions, plus the scripted scenarios as examples
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function renderSimulate() {
+    $("#simCard").innerHTML = `<div class="eyebrow">Simulate</div>
+      <h2>What are you doing?</h2>
+      <p class="role">Type any action. The simulator works out which regions it recruits and fires them in order.</p>
+      <form class="simform" id="simForm"><input id="simInput" placeholder="e.g. playing piano while nervous" autocomplete="off"><button type="submit">Simulate</button></form>
+      <div class="chips" id="simChips"></div>
+      <div id="simOut"></div>`;
+    const chips = $("#simChips");
+    for (const s of SCENARIOS) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = s.name;
+      b.addEventListener("click", () => { $("#simInput").value = s.name; runScripted(s); }); chips.appendChild(b);
+    }
+    for (const ex of ["eating pizza", "running from a spider", "doing math homework", "texting a friend"]) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = ex;
+      b.addEventListener("click", () => { $("#simInput").value = ex; runFreeText(ex); }); chips.appendChild(b);
+    }
+    $("#simForm").addEventListener("submit", e => { e.preventDefault(); const v = $("#simInput").value.trim(); if (v) runFreeText(v); });
+    setTimeout(() => $("#simInput").focus(), 50);
+  }
+  function runFreeText(text) {
+    const sim = simulateAction(text);
+    const reasons = sim.generic
+      ? `No specific keywords recognised — showing the general pathway for a deliberate action. Add words to <b>LEXICON</b> to teach it.`
+      : "Triggered by " + [...sim.matched].map(([why, hits]) => `<b>${why}</b> (${hits.map(h => `"${h}"`).join(", ")})`).join(", ") + ".";
+    renderSimResult(`Simulating: ${esc(text)}`, reasons, sim.weights, sim.steps);
+  }
+  function runScripted(s) {
+    const weights = {};
+    s.steps.forEach(([id], i) => { weights[id] = Math.max(weights[id] || 0, 1 - i * 0.12); });
+    renderSimResult(s.name, "Scripted scenario — hand-written steps.", weights, s.steps);
+  }
+  function renderSimResult(title, reasons, weights, steps) {
+    const ids = Object.keys(weights).sort((a, b) => weights[b] - weights[a]);
+    $("#simOut").innerHTML = `
+      <h3 style="margin-top:16px">${title}</h3>
+      <p class="why">${reasons}</p>
+      <div class="bars">${ids.map(id => `<div class="bar"><span>${byId[id].name}</span><div class="track"><div class="fill" style="--rc:${byId[id].color};width:0%" data-w="${Math.round(weights[id] * 100)}"></div></div><span class="pct">${Math.round(weights[id] * 100)}%</span></div>`).join("")}</div>
+      <div class="steps" id="steps"></div>
+      <button class="stim" id="replayBtn" style="margin-top:12px">▶ Play again</button>`;
+    requestAnimationFrame(() => $$("#simOut .fill").forEach(f => f.style.width = f.dataset.w + "%"));
+    $("#replayBtn").addEventListener("click", () => playSequence(steps, weights));
+    playSequence(steps, weights);
+  }
+  function playSequence(steps, weights) {
+    stopScenario();
+    const needsInside = steps.some(([id]) => byId[id].view === "medial");
+    if (needsInside && currentView !== "medial") showView("medial");
+    brain3d && brain3d.setActivity(weights);
+    $("#steps").innerHTML = steps.map(([id, , cap], i) => `<div class="step" data-i="${i}"><span class="dot" style="--rc:${byId[id].color}"></span>${byId[id].name}: ${cap}</div>`).join("");
+    let i = 0;
+    const run = () => {
+      if (i >= steps.length) { brain3d && brain3d.setActivity(weights); eeg.set(null); $$("#steps .step").forEach(el => el.classList.add("done")); return; }
+      const [id, ms] = steps[i];
+      brain3d && brain3d.setActive(id); eeg.set(byId[id]); sparks(id);
+      $$("#steps .step").forEach(el => { el.classList.toggle("on", +el.dataset.i === i); if (+el.dataset.i < i) el.classList.add("done"); });
+      i++; scenarioTimer = setTimeout(run, ms);
+    };
+    run();
+  }
+  function stopScenario() { clearTimeout(scenarioTimer); scenarioTimer = null; }
+
+  // ---- Quiz
+  const quiz = {
+    target: null, score: 0, asked: 0, pool: [],
+    start() { this.score = 0; this.asked = 0; this.pool = REGIONS.slice().sort(() => Math.random() - 0.5); this.next(); },
+    next() {
+      clearActive();
+      if (!this.pool.length) {
+        $("#quizCard").innerHTML = `<div class="eyebrow">Quiz</div><h2>All done</h2><p class="role">You scored ${this.score} of ${this.asked}.</p><button class="stim" id="quizAgain">Play again</button>`;
+        $("#quizAgain").addEventListener("click", () => this.start()); return;
+      }
+      this.target = this.pool.pop(); this.asked++;
+      showView(this.target.view);
+      $("#quizCard").innerHTML = `<div class="eyebrow">Quiz · question ${this.asked} of ${REGIONS.length}</div>
+        <p class="quiz-q">Click the region that ${this.target.clue}.</p>
+        <p class="quiz-fb" id="quizFb">Hint: it is in the <b>${VIEWS.find(v => v.id === this.target.view).label.toLowerCase()}</b> view. Rotate the brain to find it.</p>
+        <div class="score">score ${this.score} / ${this.asked - 1}</div>`;
+    },
+    answer(id) {
+      if (!this.target) return;
+      const fb = $("#quizFb");
+      if (id === this.target.id) {
+        this.score++; fb.textContent = `Correct — the ${this.target.name.toLowerCase()}.`; fb.className = "quiz-fb good";
+        light(id); sparks(id); this.target = null; setTimeout(() => this.next(), 1400);
+      } else { fb.textContent = `That's the ${byId[id].name.toLowerCase()} — try again.`; fb.className = "quiz-fb bad"; }
+    },
+  };
+
+  // ---- Modes
+  $$("#modeSeg button").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  function setMode(m) {
+    mode = m; stopScenario(); clearActive();
+    $$("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+    $("#infoCard").hidden = m !== "explore"; $("#simCard").hidden = m !== "simulate"; $("#quizCard").hidden = m !== "quiz";
+    if (m === "explore") { if (activeId) light(activeId); else eeg.set(null); }
+    if (m === "simulate") { renderSimulate(); eeg.set(null); }
+    if (m === "quiz") quiz.start();
+  }
+
+  // ---- Activity monitor (EEG-style trace)
+  const eeg = (() => {
+    const cv = $("#eeg"), ctx = cv.getContext("2d"), readout = $("#readout");
+    let region = null, t = 0, buf = [];
+    function set(r) { region = r; readout.innerHTML = r ? `${r.name.toLowerCase()} · <b>~${r.hz} Hz</b> ${r.band}` : `idle · <b>~10 Hz</b> alpha · resting`; }
+    function sample() {
+      const hz = region ? region.hz : 10, amp = region ? 0.85 : 0.28;
+      return (t++, Math.sin(t * hz * 0.09) * amp + Math.sin(t * 0.37) * 0.12 + (Math.random() - 0.5) * 0.16);
+    }
+    function frame() {
+      const W = cv.clientWidth * devicePixelRatio, H = 90 * devicePixelRatio;
+      if (cv.width !== W) { cv.width = W; cv.height = H; }
+      for (let k = 0; k < 3; k++) buf.push(sample());
+      if (buf.length > W / 2) buf.splice(0, buf.length - W / 2);
+      ctx.clearRect(0, 0, W, H);
+      const cs = getComputedStyle(document.body);
+      ctx.strokeStyle = cs.getPropertyValue("--line"); ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 40 * devicePixelRatio) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+      ctx.strokeStyle = region ? region.color : cs.getPropertyValue("--muted"); ctx.lineWidth = 2 * devicePixelRatio;
+      ctx.beginPath();
+      buf.forEach((v, i) => { const x = i * 2, y = H / 2 - v * H * 0.4; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.stroke();
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    return { set };
+  })();
+
+  // ---- Boot
+  showView("lateral");
+  selectRegion("frontal");
+</script>
+</body>
+</html>
