@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fuel-cap-engine"
+version = "1.0.0"
+description = "Guaranteed fuel-surcharge cap pricing and MILP hedge optimization for parcel shippers"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.11", "pydantic>=2.5"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+fuel-cap = "fuel_cap_engine.main:main"
+
+[tool.setuptools]
+packages = ["fuel_cap_engine"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

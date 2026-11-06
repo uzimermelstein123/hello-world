@@ -1,0 +1,9 @@
+{
+  "name": "Acme Distribution (ground + air)",
+  "monthly_spend": 3000000,
+  "carrier_fuel_discount": 0.30,
+  "promised_cap": 0.13,
+  "min_profit_dollars": 1500,
+  "service_mix": {"ground": 0.8, "air": 0.2},
+  "service_caps": {"ground": 0.13, "air": 0.16}
+}
