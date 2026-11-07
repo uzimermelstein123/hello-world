@@ -14,9 +14,13 @@ dev = ["pytest>=7"]
 
 [project.scripts]
 fuel-cap = "fuel_cap_engine.main:main"
+fuel-cap-desk = "fuel_cap_engine.webapp:main"
 
 [tool.setuptools]
 packages = ["fuel_cap_engine"]
+
+[tool.setuptools.package-data]
+fuel_cap_engine = ["web/*.html", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
