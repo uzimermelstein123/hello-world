@@ -25,6 +25,31 @@ python -m pytest
 Exit codes: `0` hedged and audited, `2` infeasible (not enough market depth), `3` audit
 failure, `1` other error.
 
+## Web UI (Fuel Cap Desk)
+
+```bash
+python -m fuel_cap_engine.webapp              # then open http://127.0.0.1:8000
+python -m fuel_cap_engine.webapp --export snapshot.html   # static page with the default quote baked in
+```
+
+Enter the shipper and market inputs on the left and click **Run quote**. The page shows:
+
+- **Quote**: protection fee (% of spend and $), guaranteed cap, the shipper's worst case
+  (cap + fee), the diesel price where the cap starts paying, hedge cost, your margin, and
+  the chance the cap pays out.
+- **How this quote is built**: five numbered steps with the real arithmetic. They cover
+  the carrier table lookup, what you owe, how each contract maps to a pump-diesel price,
+  the optimizer's problem, and the fee calculation.
+- **Scenario explorer**: drag the slider or hover the chart to pick a diesel price. A
+  panel breaks down the surcharge, what you owe, what each contract pays, and your net
+  profit at that price.
+- **Profit chart, trade ticket, pricing menu** (click **Use** to re-quote at another
+  cap), **market snapshot** and **verification audit**.
+
+The server uses only the Python standard library (`webapp.py`). All pricing runs in
+`service.py`, which returns the numbers as JSON; the page in `web/index.html` only
+displays them.
+
 ## Modules
 
 | Module | Role |

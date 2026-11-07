@@ -1,0 +1,810 @@
+<title>Fuel Cap Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: a control rail of quote inputs on the left; one reading column on the right that
+   goes summary -> numbered build-up of the price -> interactive scenarios -> trades -> evidence. */
+:root {
+  --bg: #f2f4f6;
+  --panel: #ffffff;
+  --sunk: #e9edf1;
+  --ink: #11161b;
+  --ink-2: #444e5a;
+  --ink-3: #6b7683;
+  --rule: #d7dde3;
+  --accent: #0b5f8a;
+  --accent-ink: #ffffff;
+  --accent-soft: #e0edf5;
+  --s-payout: #2a78d6;
+  --s-liab: #eb6834;
+  --good: #0ca30c;
+  --good-ink: #0a7a0a;
+  --crit: #d03b3b;
+  --warn-ink: #8a5a00;
+  --warn-bg: #fdf3dc;
+  --crit-bg: #fbe9e9;
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --f-body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1115; --panel: #151a20; --sunk: #1c232b; --ink: #e6eaee; --ink-2: #a7b1bc; --ink-3: #7d8894;
+    --rule: #29313a; --accent: #5cb0de; --accent-ink: #062030; --accent-soft: #15303f;
+    --s-payout: #3987e5; --s-liab: #d95926; --good-ink: #46c946; --warn-ink: #f0c060; --warn-bg: #33280f;
+    --crit-bg: #3a1a1a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1115; --panel: #151a20; --sunk: #1c232b; --ink: #e6eaee; --ink-2: #a7b1bc; --ink-3: #7d8894;
+  --rule: #29313a; --accent: #5cb0de; --accent-ink: #062030; --accent-soft: #15303f;
+  --s-payout: #3987e5; --s-liab: #d95926; --good-ink: #46c946; --warn-ink: #f0c060; --warn-bg: #33280f;
+  --crit-bg: #3a1a1a; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--f-body); }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; letter-spacing: 0.005em; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.45rem; line-height: 1.2; }
+h3 { font-size: 1.1rem; }
+p { margin: 0; }
+.num, td, .mono { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--f-mono); font-size: 0.86em; }
+.muted { color: var(--ink-3); }
+.wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- top bar ---------- */
+.top { border-bottom: 1px solid var(--rule); background: var(--panel); }
+.top-in { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding-block: 14px; }
+.brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.brand h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.01em; }
+.brand h1 span { color: var(--accent); }
+.brand p { color: var(--ink-3); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.chip { font: 500 0.72rem/1 var(--f-mono); letter-spacing: 0.04em; text-transform: uppercase; padding: 6px 8px; border-radius: 99px; border: 1px solid var(--rule); color: var(--ink-2); background: var(--sunk); white-space: nowrap; }
+.chip.live { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- layout ---------- */
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; padding-block: 24px 64px; align-items: start; }
+@media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- control rail ---------- */
+.rail { position: sticky; top: 16px; background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r); }
+@media (max-width: 960px) { .rail { position: static; } }
+.rail form { display: grid; gap: 18px; padding: 18px; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 18px; }
+.group { display: grid; gap: 10px; }
+.group-title { font: 600 0.72rem/1 var(--f-body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); }
+.field { display: grid; gap: 4px; }
+.field label { font-size: 0.86rem; color: var(--ink-2); }
+.inbox { display: flex; align-items: center; border: 1px solid var(--rule); border-radius: 4px; background: var(--bg); }
+.inbox:focus-within { border-color: var(--accent); }
+.inbox span { padding: 0 8px; color: var(--ink-3); font-size: 0.85rem; }
+.inbox input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: 500 0.95rem var(--f-mono); padding: 7px 8px; outline: none; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.field { min-width: 0; }
+.inbox { min-width: 0; }
+.inbox input { width: 100%; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; color: var(--ink-2); }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+.hint { font-size: 0.8rem; color: var(--ink-3); }
+button { font: 600 0.95rem var(--f-body); cursor: pointer; border-radius: 4px; }
+.btn { background: var(--accent); color: var(--accent-ink); border: 0; padding: 10px 14px; }
+.btn:hover { filter: brightness(1.08); }
+.btn[disabled] { opacity: 0.55; cursor: progress; }
+.btn-ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 5px 10px; font-size: 0.82rem; }
+.formmsg { font-size: 0.86rem; color: var(--crit); }
+.snapnote { font-size: 0.85rem; color: var(--ink-2); background: var(--sunk); padding: 10px 12px; border-radius: 4px; }
+.snapnote code { font-family: var(--f-mono); font-size: 0.82em; }
+
+/* ---------- main column ---------- */
+main { display: grid; gap: 20px; min-width: 0; transition: opacity 0.2s; }
+main[aria-busy="true"] { opacity: 0.45; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { main { transition: none; } }
+.block { background: var(--panel); border: 1px solid var(--rule); border-radius: var(--r); padding: 22px; display: grid; gap: 16px; min-width: 0; }
+.block-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.lede { color: var(--ink-2); max-width: 72ch; }
+
+/* ---------- quote summary ---------- */
+.quote { display: grid; grid-template-columns: minmax(220px, 1.1fr) minmax(0, 2fr); gap: 0; padding: 0; overflow: hidden; }
+@media (max-width: 720px) { .quote { grid-template-columns: minmax(0, 1fr); } }
+.hero { background: var(--accent-soft); padding: 22px; display: grid; align-content: start; gap: 6px; border-right: 1px solid var(--rule); }
+@media (max-width: 720px) { .hero { border-right: 0; border-bottom: 1px solid var(--rule); } }
+.eyebrow { font: 600 0.72rem/1.2 var(--f-body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); }
+.hero .big { font: 700 3.3rem/1 var(--f-display); color: var(--ink); }
+.hero .sub { font-size: 1.05rem; color: var(--ink-2); }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.84rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; width: fit-content; margin-top: 8px; }
+.pill.ok { color: var(--good-ink); background: color-mix(in srgb, var(--good) 14%, transparent); }
+.pill.bad { color: var(--crit); background: var(--crit-bg); }
+.pill svg { width: 14px; height: 14px; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { padding: 16px 20px; display: grid; gap: 4px; align-content: start; border-bottom: 1px solid var(--rule); border-left: 1px solid var(--rule); }
+.tile .v { font: 600 1.55rem/1.1 var(--f-display); }
+.tile .d { font-size: 0.82rem; color: var(--ink-3); }
+
+/* ---------- steps ---------- */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: step; }
+.step { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; padding: 18px 0; border-top: 1px solid var(--rule); counter-increment: step; }
+.step:first-child { border-top: 0; padding-top: 4px; }
+@media (max-width: 560px) { .step { grid-template-columns: minmax(0, 1fr); gap: 10px; } .block { padding: 18px 16px; } }
+.step::before { content: counter(step); font: 700 1.3rem/38px var(--f-display); width: 38px; height: 38px; text-align: center; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent); }
+.step-body { display: grid; gap: 10px; min-width: 0; }
+.step-body p { max-width: 78ch; color: var(--ink-2); }
+.step-body p strong { color: var(--ink); font-weight: 600; }
+.formula { font: 400 0.88rem/1.7 var(--f-mono); background: var(--sunk); border-radius: 4px; padding: 10px 14px; overflow-x: auto; white-space: pre; color: var(--ink); }
+.formula .k { color: var(--ink-3); }
+
+/* ---------- tables ---------- */
+.tscroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th { text-align: right; font: 600 0.72rem/1.2 var(--f-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); padding: 8px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th:first-child, td:first-child, th.l, td.l { text-align: left; }
+tbody tr:last-child td { border-bottom: 0; }
+tfoot td { border-top: 1.5px solid var(--ink-3); border-bottom: 0; font-weight: 700; }
+tr.hl td { background: var(--accent-soft); }
+tr.over td { color: var(--ink); }
+tr.over td.flag { color: var(--s-liab); font-weight: 600; }
+tr.gap td { color: var(--ink-3); text-align: center; }
+.venue { font: 500 0.7rem/1 var(--f-mono); padding: 3px 6px; border-radius: 3px; border: 1px solid var(--rule); color: var(--ink-2); }
+.ok-t { color: var(--good-ink); font-weight: 600; }
+.bad-t { color: var(--crit); font-weight: 600; }
+details > summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 0.92rem; list-style-position: inside; }
+details[open] > summary { margin-bottom: 10px; }
+
+/* ---------- charts ---------- */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.86rem; color: var(--ink-2); }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.legend i.dash { height: 0; border-top: 2px dashed var(--ink-3); background: none; }
+.chart { position: relative; min-width: 0; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font-family: var(--f-body); font-size: 12px; fill: var(--ink-3); }
+.chart .grid { stroke: var(--rule); stroke-width: 1; }
+.chart .axis { stroke: var(--ink-3); stroke-width: 1; }
+.chart .ref { stroke: var(--ink-3); stroke-width: 1.25; stroke-dasharray: 4 4; }
+.chart .ref-label { fill: var(--ink-2); font-size: 11.5px; }
+.chart .cross { stroke: var(--ink-2); stroke-width: 1; }
+.chart .end-label { fill: var(--ink); font-size: 12px; font-weight: 600; }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 7px 9px; font-size: 0.8rem; line-height: 1.45; box-shadow: 0 4px 14px rgb(0 0 0 / 0.12); white-space: nowrap; z-index: 2; color: var(--ink); }
+.tip b { font-weight: 600; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+/* ---------- explorer ---------- */
+.explorer { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .explorer { grid-template-columns: minmax(0, 1fr); } }
+.sliderrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; font-size: 0.86rem; color: var(--ink-3); }
+.sliderrow input { width: 100%; accent-color: var(--accent); }
+.calc { border: 1px solid var(--rule); border-radius: var(--r); background: var(--bg); padding: 14px 16px; display: grid; gap: 2px; font-size: 0.9rem; }
+.calc .price { font: 700 2rem/1.1 var(--f-display); }
+.calc .row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+.calc .row span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+.calc .sub { padding-left: 12px; color: var(--ink-3); font-size: 0.84rem; }
+.calc .sub span:last-child { font-weight: 400; }
+.calc .sep { border-top: 1px solid var(--rule); margin: 6px 0; }
+.calc .why { font: 0.78rem/1.4 var(--f-mono); color: var(--ink-3); padding-bottom: 4px; white-space: normal; }
+.calc .net { font-size: 1.05rem; }
+.swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; }
+
+.notice { border-radius: var(--r); padding: 14px 16px; font-size: 0.9rem; display: grid; gap: 6px; }
+.notice.warn { background: var(--warn-bg); color: var(--warn-ink); }
+.notice.crit { background: var(--crit-bg); color: var(--crit); }
+.notice pre { margin: 0; font: 0.84rem/1.5 var(--f-mono); white-space: pre-wrap; color: var(--ink); }
+</style>
+
+<header class="top">
+  <div class="wrap top-in">
+    <div class="brand">
+      <h1>Fuel Cap <span>Desk</span></h1>
+      <p>Guaranteed fuel-surcharge cap: hedge, price, verify</p>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <aside class="rail" aria-label="Quote inputs">
+    <form id="form" novalidate>
+      <fieldset id="fs">
+        <div class="group">
+          <div class="group-title">Shipper</div>
+          <div class="field"><label for="name">Name</label><div class="inbox"><input id="name" type="text" autocomplete="off"></div></div>
+          <div class="field"><label for="monthly_spend">Monthly base transportation spend</label><div class="inbox"><span>$</span><input id="monthly_spend" type="number" min="1" step="10000"></div></div>
+          <div class="pair">
+            <div class="field"><label for="carrier_fuel_discount">Fuel discount</label><div class="inbox"><input id="carrier_fuel_discount" type="number" min="0" max="99" step="1"><span>%</span></div></div>
+            <div class="field"><label for="promised_cap">Promised cap</label><div class="inbox"><input id="promised_cap" type="number" min="0" max="100" step="0.25"><span>%</span></div></div>
+          </div>
+          <div class="field"><label for="min_profit_dollars">Your guaranteed margin per month</label><div class="inbox"><span>$</span><input id="min_profit_dollars" type="number" min="0" step="100"></div></div>
+          <div class="pair">
+            <div class="field"><label for="air_share">Air share of spend</label><div class="inbox"><input id="air_share" type="number" min="0" max="100" step="5"><span>%</span></div></div>
+            <div class="field"><label for="air_cap">Air cap</label><div class="inbox"><input id="air_cap" type="number" min="0" max="100" step="0.25" placeholder="same"><span>%</span></div></div>
+          </div>
+        </div>
+        <div class="group">
+          <div class="group-title">Market</div>
+          <div class="pair">
+            <div class="field"><label for="eia_diesel_spot">EIA diesel</label><div class="inbox"><span>$</span><input id="eia_diesel_spot" type="number" min="0.5" step="0.01"></div></div>
+            <div class="field"><label for="ho_futures_price">HO futures</label><div class="inbox"><span>$</span><input id="ho_futures_price" type="number" min="0.5" step="0.01"></div></div>
+          </div>
+          <div class="pair">
+            <div class="field"><label for="diesel_annual_vol">HO volatility</label><div class="inbox"><input id="diesel_annual_vol" type="number" min="1" step="1"><span>%</span></div></div>
+            <div class="field"><label for="horizon_days">Days to settle</label><div class="inbox"><input id="horizon_days" type="number" min="1" max="365" step="1"></div></div>
+          </div>
+          <div class="pair">
+            <div class="field"><label for="ho_basis_buffer">HO safety buffer</label><div class="inbox"><span>$</span><input id="ho_basis_buffer" type="number" min="0" step="0.01"></div></div>
+            <div class="field"><label for="kalshi_basis_buffer">Kalshi buffer</label><div class="inbox"><span>$</span><input id="kalshi_basis_buffer" type="number" min="0" step="0.01"></div></div>
+          </div>
+          <label class="check"><input id="include_kalshi" type="checkbox"> Use Kalshi diesel contracts</label>
+          <label class="check"><input id="include_cme" type="checkbox"> Use CME heating-oil calls</label>
+        </div>
+      </fieldset>
+      <button class="btn" id="run" type="submit">Run quote</button>
+      <p class="formmsg" id="formmsg" role="alert"></p>
+      <p class="snapnote" id="snapnote" hidden>This is a saved snapshot of the default quote. To change the inputs, run <code>python -m fuel_cap_engine.webapp</code> and open the page it serves.</p>
+    </form>
+  </aside>
+
+  <main id="main" aria-live="polite">
+    <section class="block quote ok-only" id="quote" aria-label="Quote summary"></section>
+
+    <section class="block" id="infeasible" hidden></section>
+
+    <section class="block ok-only" id="walk">
+      <div class="block-head"><h2>How this quote is built</h2><span class="muted" id="walk-meta"></span></div>
+      <ol class="steps" id="steps"></ol>
+    </section>
+
+    <section class="block ok-only" id="explore">
+      <div class="block-head">
+        <h2>Scenario explorer</h2>
+        <div class="legend"><span><i style="background:var(--s-liab)"></i>You owe the shipper</span><span><i style="background:var(--s-payout)"></i>Hedge pays you</span><span><i class="dash"></i>Today / cap trigger</span></div>
+      </div>
+      <p class="lede">Pick any diesel price. The panel shows every number behind the result at that price. Wherever the orange line rises, the blue line has to be at or above it.</p>
+      <div class="explorer">
+        <div style="display:grid;gap:12px;min-width:0">
+          <div class="chart" id="chart-cover"></div>
+          <div class="sliderrow"><span id="slider-lo"></span><input id="slider" type="range" aria-label="Diesel price"><span id="slider-hi"></span></div>
+        </div>
+        <div class="calc" id="calc" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="block ok-only" id="pnl">
+      <div class="block-head">
+        <h2>Your profit at every diesel price</h2>
+        <div class="legend"><span><i style="background:var(--s-payout)"></i>Net profit</span><span><i class="dash"></i>Guaranteed floor</span></div>
+      </div>
+      <p class="lede" id="pnl-lede"></p>
+      <div class="chart" id="chart-pnl"></div>
+    </section>
+
+    <section class="block ok-only" id="ticket">
+      <div class="block-head"><h2>Trade order ticket</h2><span class="muted" id="ticket-meta"></span></div>
+      <div class="tscroll" id="ticket-table"></div>
+    </section>
+
+    <section class="block" id="menu">
+      <div class="block-head"><h2>Pricing menu</h2><span class="muted">Same shipper and market, different cap levels</span></div>
+      <p class="lede">A higher cap pays out less often, so it costs less. "Shipper's worst case" is the cap plus the fee: the most the shipper can pay for fuel as a share of spend.</p>
+      <div class="chart" id="chart-menu"></div>
+      <div class="tscroll" id="menu-table"></div>
+    </section>
+
+    <section class="block" id="market">
+      <div class="block-head"><h2>Market snapshot</h2><span class="muted" id="market-meta"></span></div>
+      <p class="lede" id="market-lede"></p>
+      <details id="kalshi-details"><summary>Kalshi diesel contracts</summary><div class="tscroll" id="kalshi-table"></div></details>
+      <details id="cme-details"><summary>CME heating-oil (HO) call options</summary><div class="tscroll" id="cme-table"></div></details>
+    </section>
+
+    <section class="block ok-only" id="audit">
+      <div class="block-head"><h2>Verification audit</h2><span class="muted" id="audit-meta"></span></div>
+      <div id="audit-summary" style="display:grid;gap:10px"></div>
+      <details><summary>Show every scenario checked</summary><div class="tscroll" id="audit-table"></div></details>
+    </section>
+  </main>
+</div>
+
+<script type="application/json" id="snapshot"></script>
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const SNAP = (() => { const t = $("#snapshot").textContent.trim(); if (!t) return null; try { return JSON.parse(t); } catch { return null; } })();
+const LIVE = !SNAP;
+
+// ------------------------------------------------------------------ formatting
+const fmt = {
+  usd(x, d = 2) {
+    if (x == null || Number.isNaN(x)) return "–";
+    const s = Math.abs(x).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+    return (x < 0 ? "−$" : "$") + s;
+  },
+  usd0: (x) => fmt.usd(x, 0),
+  compact(x) {
+    const a = Math.abs(x);
+    if (a >= 1e6) return "$" + (x / 1e6).toLocaleString("en-US", { maximumFractionDigits: 2 }) + "M";
+    if (a >= 1e4) return "$" + (x / 1e3).toLocaleString("en-US", { maximumFractionDigits: 1 }) + "k";
+    return fmt.usd0(x);
+  },
+  pct: (f, d = 2) => (f * 100).toFixed(d) + "%",
+  pp: (p, d = 3) => p.toFixed(d) + "%",
+  gal: (x, d = 2) => "$" + Number(x).toFixed(d),
+  int: (x) => Math.round(x).toLocaleString("en-US"),
+};
+
+// ------------------------------------------------------------------- the form
+const FIELDS = [
+  ["name", "text"], ["monthly_spend", "num"], ["carrier_fuel_discount", "pct"], ["promised_cap", "pct"],
+  ["min_profit_dollars", "num"], ["air_share", "pct"], ["air_cap", "pct?"], ["eia_diesel_spot", "num"],
+  ["ho_futures_price", "num"], ["diesel_annual_vol", "pct"], ["horizon_days", "int"],
+  ["ho_basis_buffer", "num"], ["kalshi_basis_buffer", "num"], ["include_kalshi", "bool"], ["include_cme", "bool"],
+];
+function fillForm(v) {
+  for (const [id, kind] of FIELDS) {
+    const el = document.getElementById(id);
+    const x = v[id];
+    if (kind === "bool") el.checked = !!x;
+    else if (kind.startsWith("pct")) el.value = x == null ? "" : +(x * 100).toFixed(4);
+    else el.value = x ?? "";
+  }
+}
+function readForm() {
+  const out = {};
+  for (const [id, kind] of FIELDS) {
+    const el = document.getElementById(id);
+    if (kind === "bool") out[id] = el.checked;
+    else if (kind === "text") out[id] = el.value.trim() || "Shipper";
+    else if (el.value === "") { if (kind === "pct?") out[id] = null; else throw new Error(`${el.labels[0].textContent} is required.`); }
+    else if (kind.startsWith("pct")) out[id] = Number(el.value) / 100;
+    else if (kind === "int") out[id] = Math.round(Number(el.value));
+    else out[id] = Number(el.value);
+  }
+  return out;
+}
+
+// --------------------------------------------------------------------- charts
+function niceTicks(min, max, count = 5) {
+  const span = max - min || 1;
+  const raw = span / count;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= count) || 10 * mag;
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = lo; v <= hi + step * 1e-9; v += step) ticks.push(+v.toFixed(10));
+  return { lo, hi, ticks };
+}
+function shortUsd(v) {
+  const a = Math.abs(v);
+  if (a >= 1e6) return (v < 0 ? "−$" : "$") + (a / 1e6).toFixed(a % 1e6 ? 1 : 0) + "M";
+  if (a >= 1e3) return (v < 0 ? "−$" : "$") + (a / 1e3).toFixed(0) + "k";
+  return fmt.usd0(v);
+}
+
+/** Line chart with crosshair, tooltip and dashed reference lines. */
+function lineChart(el, o) {
+  const W = Math.max(300, el.clientWidth || 600), H = o.height || 300;
+  const m = { l: 58, r: 92, t: 18, b: 36 };
+  const n = o.xs.length;
+  const all = o.series.flatMap((s) => s.ys).concat((o.refsY || []).map((r) => r.y));
+  const yr = niceTicks(Math.min(0, ...all), Math.max(...all) * 1.04 || 1, 5);
+  const xr = niceTicks(o.xs[0], o.xs[n - 1], Math.max(4, Math.floor((W - m.l - m.r) / 90)));
+  const X = (x) => m.l + ((x - o.xs[0]) / (o.xs[n - 1] - o.xs[0])) * (W - m.l - m.r);
+  const Y = (y) => m.t + (1 - (y - yr.lo) / (yr.hi - yr.lo)) * (H - m.t - m.b);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}">`;
+  for (const t of yr.ticks) s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${m.l - 8}" y="${Y(t) + 4}" text-anchor="end">${o.yFmt(t)}</text>`;
+  for (const t of xr.ticks) if (t >= o.xs[0] - 1e-9 && t <= o.xs[n - 1] + 1e-9) s += `<text x="${X(t)}" y="${H - m.b + 18}" text-anchor="middle">${o.xFmt(t)}</text>`;
+  s += `<line class="axis" x1="${m.l}" x2="${W - m.r}" y1="${Y(Math.max(0, yr.lo))}" y2="${Y(Math.max(0, yr.lo))}"/>`;
+  for (const r of o.refsX || []) {
+    if (r.x < o.xs[0] || r.x > o.xs[n - 1]) continue;
+    s += `<line class="ref" x1="${X(r.x)}" x2="${X(r.x)}" y1="${m.t}" y2="${H - m.b}"/><text class="ref-label" x="${X(r.x) + 5}" y="${m.t + 10 + (r.row || 0) * 14}">${esc(r.label)}</text>`;
+  }
+  for (const r of o.refsY || []) s += `<line class="ref" x1="${m.l}" x2="${W - m.r}" y1="${Y(r.y)}" y2="${Y(r.y)}"/><text class="ref-label" x="${W - m.r + 6}" y="${Y(r.y) + 4}">${esc(r.label)}</text>`;
+  const ends = [];
+  for (const se of o.series) {
+    const d = se.ys.map((y, i) => `${i ? "L" : "M"}${X(o.xs[i]).toFixed(1)},${Y(y).toFixed(1)}`).join("");
+    s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2" stroke-linejoin="round"/>`;
+    ends.push({ y: Y(se.ys[n - 1]), label: se.label, color: se.color });
+  }
+  ends.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 15) ends[i].y = ends[i - 1].y + 15;
+  for (const e of ends) s += `<circle cx="${W - m.r + 8}" cy="${e.y - 4}" r="4" fill="${e.color}"/><text class="end-label" x="${W - m.r + 16}" y="${e.y}">${esc(e.label)}</text>`;
+  s += `<g class="xh" style="display:none"><line class="cross" y1="${m.t}" y2="${H - m.b}"/>`;
+  for (const se of o.series) s += `<circle r="5" fill="${se.color}" stroke="var(--panel)" stroke-width="2"/>`;
+  s += `</g><rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent" style="cursor:crosshair"/></svg><div class="tip" hidden></div>`;
+  el.innerHTML = s;
+  const g = el.querySelector(".xh"), tip = el.querySelector(".tip"), hit = el.querySelector("rect");
+  const svg = el.querySelector("svg");
+  function show(i, withTip) {
+    g.style.display = "";
+    const x = X(o.xs[i]);
+    const line = g.querySelector("line"); line.setAttribute("x1", x); line.setAttribute("x2", x);
+    g.querySelectorAll("circle").forEach((c, k) => { c.setAttribute("cx", x); c.setAttribute("cy", Y(o.series[k].ys[i])); });
+    if (!withTip) { tip.hidden = true; return; }
+    tip.innerHTML = o.tip(i); tip.hidden = false;
+    const scale = svg.getBoundingClientRect().width / W;
+    const px = x * scale, tw = tip.offsetWidth;
+    tip.style.left = (px + 12 + tw > el.clientWidth ? px - tw - 12 : px + 12) + "px";
+    tip.style.top = (m.t * scale) + "px";
+  }
+  function idxAt(evt) {
+    const r = svg.getBoundingClientRect();
+    const x = (evt.clientX - r.left) * (W / r.width);
+    const f = (x - m.l) / (W - m.l - m.r);
+    return Math.max(0, Math.min(n - 1, Math.round(f * (n - 1))));
+  }
+  hit.addEventListener("pointermove", (e) => { const i = idxAt(e); show(i, true); o.onSelect && o.onSelect(i, el); });
+  hit.addEventListener("pointerleave", () => { tip.hidden = true; });
+  return { select: (i) => show(i, false) };
+}
+
+/** Vertical bars, one per category, with hover tooltip. */
+function barChart(el, o) {
+  const W = Math.max(300, el.clientWidth || 600), H = o.height || 240;
+  const m = { l: 58, r: 16, t: 22, b: 36 };
+  const vals = o.ys.filter((v) => v != null);
+  const yr = niceTicks(0, Math.max(...vals, 0.0001) * 1.08, 4);
+  const n = o.cats.length, band = (W - m.l - m.r) / n, bw = Math.min(56, band - 2 - band * 0.3);
+  const Y = (y) => m.t + (1 - (y - yr.lo) / (yr.hi - yr.lo)) * (H - m.t - m.b);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)}">`;
+  for (const t of yr.ticks) s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${m.l - 8}" y="${Y(t) + 4}" text-anchor="end">${o.yFmt(t)}</text>`;
+  o.cats.forEach((c, i) => {
+    const cx = m.l + band * (i + 0.5), v = o.ys[i];
+    s += `<text x="${cx}" y="${H - m.b + 18}" text-anchor="middle" style="${i === o.highlight ? "fill:var(--ink);font-weight:600" : ""}">${esc(c)}</text>`;
+    if (v == null) { s += `<text x="${cx}" y="${Y(0) - 8}" text-anchor="middle">n/a</text>`; return; }
+    const y0 = Y(0), y1 = Math.min(Y(v), y0 - 2), x0 = cx - bw / 2, r = Math.min(4, (y0 - y1) / 2);
+    s += `<path d="M${x0},${y0}V${y1 + r}Q${x0},${y1} ${x0 + r},${y1}H${x0 + bw - r}Q${x0 + bw},${y1} ${x0 + bw},${y1 + r}V${y0}Z" fill="var(--s-payout)" opacity="${o.highlight == null || i === o.highlight ? 1 : 0.55}"/>`;
+    if (i === o.highlight) s += `<text x="${cx}" y="${y1 - 6}" text-anchor="middle" class="end-label">current</text>`;
+    s += `<rect data-i="${i}" x="${cx - band / 2}" y="${m.t}" width="${band}" height="${H - m.t - m.b}" fill="transparent"/>`;
+  });
+  s += `<line class="axis" x1="${m.l}" x2="${W - m.r}" y1="${Y(0)}" y2="${Y(0)}"/></svg><div class="tip" hidden></div>`;
+  el.innerHTML = s;
+  const tip = el.querySelector(".tip"), svg = el.querySelector("svg");
+  el.querySelectorAll("rect[data-i]").forEach((r) => {
+    r.addEventListener("pointerenter", () => {
+      const i = +r.dataset.i; tip.innerHTML = o.tip(i); tip.hidden = false;
+      const sc = svg.getBoundingClientRect().width / W, cx = (m.l + band * (i + 0.5)) * sc;
+      tip.style.left = Math.max(0, Math.min(el.clientWidth - tip.offsetWidth, cx - tip.offsetWidth / 2)) + "px";
+      tip.style.top = "0px";
+    });
+    r.addEventListener("pointerleave", () => { tip.hidden = true; });
+  });
+}
+
+// ------------------------------------------------------------------- rendering
+const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const CROSS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+const state = { q: null, sel: 0, charts: {} };
+
+function renderChips(q) {
+  const mk = q.market;
+  $("#chips").innerHTML = [
+    `<span class="chip ${LIVE ? "live" : ""}">${LIVE ? "Live engine" : "Snapshot"}</span>`,
+    `<span class="chip">Kalshi: ${esc(mk.kalshi_source)}</span>`,
+    `<span class="chip">CME: ${esc(mk.cme_source)}</span>`,
+    `<span class="chip">Diesel ${fmt.gal(mk.eia_diesel_spot, 3)}</span>`,
+  ].join("");
+}
+
+function renderQuote(q) {
+  const k = q.kpis, p = q.profile, a = q.audit;
+  const trig = k.trigger_price;
+  const capTxt = q.services.length > 1 ? q.services.map((s) => `${s.service} ${fmt.pct(s.cap)}`).join(" · ") : fmt.pct(k.blended_cap);
+  $("#quote").innerHTML = `
+    <div class="hero">
+      <div class="eyebrow">Protection fee for ${esc(p.name)}</div>
+      <div class="big num">${fmt.pp(k.fee_pct)}</div>
+      <div class="sub num">of base spend · ${fmt.usd(k.fee_dollars)} per month</div>
+      <span class="pill ${a.all_passed ? "ok" : "bad"}">${a.all_passed ? CHECK : CROSS} ${a.all_passed ? "Zero-loss audit passed" : "Audit failed"}: ${a.n_total - a.rows.filter((r) => !r.passed).length} of ${a.n_total} prices</span>
+    </div>
+    <div class="tiles">
+      <div class="tile"><span class="eyebrow">Guaranteed max fuel surcharge</span><span class="v num">${esc(capTxt)}</span><span class="d">after the shipper's ${fmt.pct(p.carrier_fuel_discount, 0)} discount</span></div>
+      <div class="tile"><span class="eyebrow">Shipper's worst case</span><span class="v num">${fmt.pp(k.all_in_max_pct)}</span><span class="d">cap + fee, any diesel up to ${fmt.gal(q.scenario_range.max)}</span></div>
+      <div class="tile"><span class="eyebrow">Cap starts paying at</span><span class="v num">${trig == null ? "never" : fmt.gal(trig, 3)}</span><span class="d">${trig == null ? "in the scenario range" : `diesel, ${((trig / q.spot.diesel - 1) * 100).toFixed(1)}% above today`}</span></div>
+      <div class="tile"><span class="eyebrow">Hedge cost</span><span class="v num">${fmt.usd(k.hedge_cost)}</span><span class="d">${q.orders.length} order${q.orders.length === 1 ? "" : "s"}, premium + fees</span></div>
+      <div class="tile"><span class="eyebrow">Your guaranteed margin</span><span class="v num">${fmt.usd(k.min_profit)}</span><span class="d">expected ${fmt.usd(k.expected_pnl)} with hedge upside</span></div>
+      <div class="tile"><span class="eyebrow">Chance the cap pays out</span><span class="v num">${(k.prob_binds * 100).toFixed(1)}%</span><span class="d">expected claims ${fmt.usd(k.expected_claims)}</span></div>
+    </div>`;
+}
+
+function idxAtPrice(q, price) {
+  const xs = q.curve.prices;
+  let best = 0;
+  for (let i = 0; i < xs.length; i++) if (Math.abs(xs[i] - price) < Math.abs(xs[best] - price)) best = i;
+  return best;
+}
+
+function bandRowsHtml(svc, spot) {
+  const b = svc.bands;
+  let spotI = 0; b.forEach((r, i) => { if (r.from <= spot + 1e-9) spotI = i; });
+  const trigI = b.findIndex((r) => r.over_cap > 0);
+  const end = trigI < 0 ? Math.min(b.length - 1, spotI + 4) : Math.min(b.length - 1, trigI + 2);
+  const start = Math.max(0, spotI - 1);
+  const keep = new Set();
+  for (let i = start; i <= Math.min(end, spotI + 2); i++) keep.add(i);
+  if (trigI >= 0) for (let i = Math.max(start, trigI - 1); i <= end; i++) keep.add(i);
+  let rows = "", prev = null;
+  [...keep].sort((x, y) => x - y).forEach((i) => {
+    if (prev != null && i > prev + 1) rows += `<tr class="gap"><td colspan="4">${i - prev - 1} more bands</td></tr>`;
+    const r = b[i];
+    const cls = i === spotI ? "hl" : r.over_cap > 0 ? "over" : "";
+    const tag = i === spotI ? " · today" : i === trigI ? " · cap binds" : "";
+    rows += `<tr class="${cls}"><td class="l">${fmt.gal(r.from)} – ${fmt.gal(r.to)}${tag}</td><td>${fmt.pct(r.nominal)}</td><td>${fmt.pct(r.effective)}</td><td class="flag">${r.over_cap > 0 ? "+" + fmt.pct(r.over_cap) : "–"}</td></tr>`;
+    prev = i;
+  });
+  return `<div class="tscroll"><table><thead><tr><th>Diesel band (${esc(svc.service)})</th><th>Carrier surcharge</th><th>After discount</th><th>Over cap</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderSteps(q) {
+  const p = q.profile, k = q.kpis, mk = q.market, sp = q.spot, c = q.curve;
+  const V = p.monthly_spend, disc = p.carrier_fuel_discount;
+  const g = q.services[0];
+  const single = q.services.length === 1;
+  const svcLines = q.services.map((s) =>
+    `${s.service.padEnd(7)} ${fmt.pct(s.spot_nominal)} × (1 − ${fmt.pct(disc, 0)}) = ${fmt.pct(s.spot_effective)}   cap ${fmt.pct(s.cap)}   ${s.spot_effective > s.cap ? "OVER" : "under"}`).join("\n");
+
+  // step 2 example price
+  const trig = k.trigger_price;
+  let exP = trig == null ? null : Math.min(q.scenario_range.max, Math.max(trig + 0.5, 5.0));
+  let exI = exP == null ? null : idxAtPrice(q, exP);
+  const ex = exI == null ? null : { p: c.prices[exI], eff: c.effective[exI], l: c.liability[exI] };
+  const owe = ex == null ? "Diesel never pushes the discounted surcharge above the cap in the scenario range, so you never owe anything." :
+    single ? `${fmt.compact(V)} × (${fmt.pct(ex.eff)} − ${fmt.pct(g.cap)}) = ${fmt.usd(ex.l)}` :
+      `${q.services.map((s) => `${s.service} ${fmt.compact(V * s.weight)} × (effective − ${fmt.pct(s.cap)})`).join(" + ")} = ${fmt.usd(ex.l)}`;
+
+  const cme = q.orders.filter((o) => o.venue === "CME"), kal = q.orders.filter((o) => o.venue === "KALSHI");
+  const fc = cme[0], fk = kal[0];
+  let hedgeLines = [];
+  if (fc) hedgeLines.push(`${fc.market_id}: HO strike ${fc.strike.toFixed(2)} + ${Math.abs(mk.ho_basis).toFixed(2)} basis + ${mk.ho_buffer.toFixed(2)} buffer → pays from diesel ${fmt.gal(fc.diesel_trigger)}`,
+    `   cost ${fc.limit_price.toFixed(4)}/gal × ${fmt.int(fc.multiplier)} gal + ${fmt.usd(mk.ho_fee)} fee = ${fmt.usd(fc.total_cost / fc.quantity)} per contract`);
+  if (fk) hedgeLines.push(`${fk.market_id}: pays $1.00 if diesel settles ${fk.contract.startsWith(">=") ? "at or above" : "above"} ${fmt.gal(fk.strike)} (+${mk.kalshi_buffer.toFixed(2)} buffer → ${fmt.gal(fk.diesel_trigger)})`,
+    `   cost ${fmt.usd(fk.vwap)} + ${(mk.kalshi_fee_rate * 100).toFixed(0)}% × P × (1 − P) fee ≈ ${fmt.usd(fk.total_cost / fk.quantity, 4)} per contract`);
+
+  const st = q.solver || {};
+  const r = q.audit;
+  const steps = [
+    {
+      t: "Read today's carrier surcharge",
+      p: `EIA retail diesel is <strong>${fmt.gal(sp.diesel, 3)}/gal</strong>. On the UPS ${esc(g.service)} table that is a <strong>${fmt.pct(g.spot_nominal)}</strong> surcharge. After the shipper's ${fmt.pct(disc, 0)} discount they pay <strong>${fmt.pct(g.spot_effective)}</strong>, ${g.spot_effective > g.cap ? "which is already above" : "which is under"} the ${fmt.pct(g.cap)} cap.`,
+      f: svcLines,
+      x: bandRowsHtml(g, sp.diesel) + (g.note ? `<p class="hint">${esc(g.note)}.</p>` : ""),
+    },
+    {
+      t: "Work out what you owe when diesel rises",
+      p: trig == null ? owe : `Once diesel reaches <strong>${fmt.gal(trig, 3)}</strong>, the discounted surcharge goes over the cap and you pay the shipper the difference on their spend. The orange line in the explorer below shows this at every price. Example at ${fmt.gal(ex.p)}:`,
+      f: trig == null ? null : `you owe = monthly spend × (effective surcharge − cap)\n        = ${owe}`,
+    },
+    {
+      t: "Buy contracts that pay when diesel rises",
+      p: `The hedge uses <strong>${cme.length} CME heating-oil call${cme.length === 1 ? "" : "s"}</strong> and <strong>${kal.length} Kalshi diesel contract${kal.length === 1 ? "" : "s"}</strong>. An HO call pays ${fmt.usd0(mk.ho_multiplier)} for every $1 that NY Harbor diesel futures finish above its strike. Futures trade about ${fmt.gal(Math.abs(mk.ho_basis))} below pump diesel, so each strike is converted to a pump price, plus a safety buffer for the gap between the two. A Kalshi contract pays $1 if diesel settles above its strike.`,
+      f: hedgeLines.join("\n") || "No contracts needed.",
+    },
+    {
+      t: "Let the optimizer pick the cheapest mix",
+      p: `HiGHS checks <strong>${r.n_total} diesel prices</strong>: ${fmt.gal(q.scenario_range.min)} to ${fmt.gal(q.scenario_range.max)} every ${Math.round(q.scenario_range.step * 100)}¢, plus every point where the carrier table steps up or a contract starts paying. It chooses whole numbers of contracts so that hedge payouts cover what you owe at every one of those prices, at the lowest total cost.`,
+      f: `minimize   Σ cost(i) × qty(i)\nsubject to Σ payout(i, price) × qty(i) ≥ you owe(price)   at ${st.n_constraints ?? 0} prices where you owe something\n           0 ≤ qty(i) ≤ contracts offered at that price      ${st.n_variables ?? 0} order-book levels\n${st.message ? `result     ${st.message.replace(/\s*\(HiGHS Status \d+: (\w+)\)/, " ($1)")} in ${st.runtime_sec.toFixed(2)}s` : "result     nothing to hedge"}`,
+    },
+    {
+      t: "Set the fee",
+      p: `The fee is the hedge cost plus your margin. Because the hedge covers what you owe at every price, you keep at least <strong>${fmt.usd(k.min_profit)}</strong> whatever diesel does.`,
+      f: `fee   = hedge cost ${fmt.usd(k.hedge_cost)} + margin ${fmt.usd(k.min_profit)} = ${fmt.usd(k.fee_dollars)}\nfee % = ${fmt.usd(k.fee_dollars)} ÷ ${fmt.usd0(V)} spend = ${fmt.pp(k.fee_pct)}\nshipper's worst case = cap ${fmt.pct(k.blended_cap)} + fee ${fmt.pp(k.fee_pct)} = ${fmt.pp(k.all_in_max_pct)} of spend`,
+    },
+  ];
+  $("#walk-meta").textContent = `${p.name} · ${fmt.compact(V)}/month`;
+  $("#steps").innerHTML = steps.map((s) => `<li class="step"><div class="step-body"><h3>${s.t}</h3><p>${s.p}</p>${s.f ? `<div class="formula">${esc(s.f)}</div>` : ""}${s.x || ""}</div></li>`).join("");
+}
+
+function calcHtml(q, i) {
+  const c = q.curve, p = q.profile, k = q.kpis;
+  const price = c.prices[i], l = c.liability[i], pay = c.payout[i], net = c.net[i];
+  const single = q.services.length === 1, cap = k.blended_cap;
+  const pos = Object.entries(c.by_position).map(([mid, ys]) => `<div class="row sub"><span>${esc(mid)}</span><span>${fmt.usd(ys[i])}</span></div>`).join("");
+  const ok = net >= k.min_profit - 1e-6;
+  return `
+    <div class="eyebrow">If diesel settles at</div>
+    <div class="price num">${fmt.gal(price)}/gal</div>
+    <div class="sep"></div>
+    <div class="row"><span>Carrier surcharge</span><span>${fmt.pct(c.nominal[i])}</span></div>
+    <div class="row"><span>After ${fmt.pct(p.carrier_fuel_discount, 0)} discount</span><span>${fmt.pct(c.effective[i])}</span></div>
+    <div class="row"><span>Shipper pays (capped)</span><span>${fmt.pct(c.charged[i])}</span></div>
+    <div class="sep"></div>
+    <div class="row"><span><i class="swatch" style="background:var(--s-liab)"></i>You owe the shipper</span><span>${fmt.usd(l)}</span></div>
+    ${l > 0 && single ? `<div class="why">${fmt.compact(p.monthly_spend)} × (${fmt.pct(c.effective[i])} − ${fmt.pct(cap)})</div>` : ""}
+    <div class="row"><span><i class="swatch" style="background:var(--s-payout)"></i>Hedge pays you</span><span>${fmt.usd(pay)}</span></div>
+    ${pos}
+    <div class="sep"></div>
+    <div class="row"><span>Fee collected</span><span>${fmt.usd(k.fee_dollars)}</span></div>
+    <div class="row"><span>Hedge cost</span><span>${fmt.usd(-k.hedge_cost)}</span></div>
+    <div class="row"><span>Hedge pays − you owe</span><span>${fmt.usd(pay - l)}</span></div>
+    <div class="row net"><span><b>Net profit</b></span><span class="${ok ? "ok-t" : "bad-t"}">${fmt.usd(net)}</span></div>
+    <div class="why">${ok ? `≥ the ${fmt.usd(k.min_profit)} guaranteed margin` : `BELOW the ${fmt.usd(k.min_profit)} margin`}</div>`;
+}
+
+function select(i, from) {
+  const q = state.q; state.sel = i;
+  $("#calc").innerHTML = calcHtml(q, i);
+  $("#slider").value = i;
+  for (const [key, ch] of Object.entries(state.charts)) if (key !== from && ch && ch.select) ch.select(i);
+}
+
+function renderCharts(q) {
+  const c = q.curve, k = q.kpis;
+  const refsX = [{ x: q.spot.diesel, label: `Today ${fmt.gal(q.spot.diesel)}` }];
+  if (k.trigger_price != null) refsX.push({ x: k.trigger_price, label: `Cap binds ${fmt.gal(k.trigger_price)}`, row: 1 });
+  state.charts.cover = lineChart($("#chart-cover"), {
+    label: "Liability versus hedge payout by diesel price", xs: c.prices, height: 320,
+    series: [
+      { label: "Hedge pays", ys: c.payout, color: "var(--s-payout)" },
+      { label: "You owe", ys: c.liability, color: "var(--s-liab)" },
+    ],
+    refsX, xFmt: (x) => "$" + x.toFixed(2), yFmt: shortUsd,
+    tip: (i) => `<b>Diesel ${fmt.gal(c.prices[i])}</b><br><i style="background:var(--s-payout)"></i>Hedge pays ${fmt.usd(c.payout[i])}<br><i style="background:var(--s-liab)"></i>You owe ${fmt.usd(c.liability[i])}`,
+    onSelect: (i) => select(i, "cover"),
+  });
+  state.charts.pnl = lineChart($("#chart-pnl"), {
+    label: "Net profit by diesel price", xs: c.prices, height: 260,
+    series: [{ label: "Net profit", ys: c.net, color: "var(--s-payout)" }],
+    refsX, refsY: [{ y: k.min_profit, label: `Floor ${shortUsd(k.min_profit)}` }],
+    xFmt: (x) => "$" + x.toFixed(2), yFmt: shortUsd,
+    tip: (i) => `<b>Diesel ${fmt.gal(c.prices[i])}</b><br>Net profit ${fmt.usd(c.net[i])}`,
+    onSelect: (i) => select(i, "pnl"),
+  });
+  select(state.sel, null);
+}
+
+function renderPnlLede(q) {
+  const a = q.audit, k = q.kpis;
+  const t = a.tightest;
+  $("#pnl-lede").innerHTML = `Profit never drops below the <strong>${fmt.usd(k.min_profit)}</strong> floor. Below ${k.trigger_price == null ? "the cap" : fmt.gal(k.trigger_price)} nothing is owed and you keep exactly the margin. Above it, the hedge pays at least what you owe, so profit only goes up.${t ? ` The closest call is at ${fmt.gal(t.diesel, 3)}, where the hedge pays ${fmt.usd(t.hedge_payout)} against ${fmt.usd(t.liability)} owed.` : ""}`;
+}
+
+function renderTicket(q) {
+  const k = q.kpis;
+  if (!q.orders.length) { $("#ticket-table").innerHTML = `<p class="muted">No contracts needed: the cap never binds in the scenario range.</p>`; $("#ticket-meta").textContent = ""; return; }
+  const rows = q.orders.map((o) => `<tr>
+    <td class="l"><span class="venue">${o.venue}</span></td><td class="l">${esc(o.market_id)}</td>
+    <td>${fmt.gal(o.diesel_trigger)}</td><td>${fmt.int(o.quantity)}</td>
+    <td>${o.venue === "CME" ? o.limit_price.toFixed(4) + "/gal" : fmt.usd(o.limit_price)}</td>
+    <td>${fmt.usd(o.premium)}</td><td>${fmt.usd(o.fees)}</td><td>${fmt.usd(o.total_cost)}</td>
+    <td>${((o.quantity / o.depth_available) * 100).toFixed(0)}%</td></tr>`).join("");
+  $("#ticket-meta").textContent = "All orders are BUY. Limits are the worst price level used.";
+  $("#ticket-table").innerHTML = `<table><thead><tr><th>Venue</th><th>Contract</th><th>Pays from diesel</th><th>Qty</th><th>Limit</th><th>Premium</th><th>Fees</th><th>Total</th><th>Book used</th></tr></thead>
+    <tbody>${rows}</tbody><tfoot><tr><td class="l" colspan="5">Total hedge cost</td><td>${fmt.usd(k.hedge_premium)}</td><td>${fmt.usd(k.hedge_fees)}</td><td>${fmt.usd(k.hedge_cost)}</td><td></td></tr></tfoot></table>`;
+}
+
+function renderMarket(q) {
+  const mk = q.market, rows = mk.markets;
+  const kal = rows.filter((r) => r.venue === "KALSHI"), cme = rows.filter((r) => r.venue === "CME");
+  $("#market-meta").textContent = `as of ${mk.as_of.replace("T", " ").replace("+00:00", " UTC")}`;
+  $("#market-lede").innerHTML = `${kal.length} Kalshi markets (${mk.n_kalshi_levels} price levels, source: ${esc(mk.kalshi_source)}) and ${cme.length} CME ${esc(mk.ho_contract)} call strikes (${mk.n_cme_levels} levels, source: ${esc(mk.cme_source)}). HO futures ${fmt.gal(mk.ho_futures_price, 4)}, ${(mk.ho_vol * 100).toFixed(0)}% volatility (${(mk.retail_vol * 100).toFixed(0)}% for pump diesel), ${mk.horizon_days} days to settlement.${mk.notes.length ? " " + mk.notes.map(esc).join(" ") : ""}`;
+  const head = `<thead><tr><th>Contract</th><th>Pays from diesel</th><th>Best ask</th><th>Cost / contract</th><th>Depth</th><th>Levels</th></tr></thead>`;
+  const body = (rs, cme) => rs.map((r) => `<tr><td class="l">${esc(r.market_id)}</td><td>${fmt.gal(r.diesel_trigger)}</td><td>${cme ? r.best_ask.toFixed(4) + "/gal" : fmt.usd(r.best_ask)}</td><td>${fmt.usd(r.best_cost)}</td><td>${fmt.int(r.depth)}</td><td>${r.levels}</td></tr>`).join("");
+  $("#kalshi-table").innerHTML = kal.length ? `<table>${head}<tbody>${body(kal, false)}</tbody></table>` : `<p class="muted">Kalshi is switched off.</p>`;
+  $("#cme-table").innerHTML = cme.length ? `<table>${head}<tbody>${body(cme, true)}</tbody></table>` : `<p class="muted">CME is switched off.</p>`;
+}
+
+function renderAudit(q) {
+  const a = q.audit, k = q.kpis;
+  const fails = a.rows.filter((r) => !r.passed);
+  $("#audit-meta").textContent = `${a.n_grid} grid prices + ${a.n_total - a.n_grid} breakpoints`;
+  let html = `<span class="pill ${a.all_passed ? "ok" : "bad"}">${a.all_passed ? CHECK : CROSS} ${a.n_total - fails.length} of ${a.n_total} prices keep at least ${fmt.usd(k.min_profit)}</span>
+    <p class="lede">Lowest profit: ${fmt.usd(a.min_net_pnl)} at ${fmt.gal(a.worst_scenario, 3)}. ${k.coverage_ceiling == null ? `The hedge still covers what you owe at every price up to ${fmt.gal(k.tail_scan_max)}.` : `Above ${fmt.gal(k.coverage_ceiling, 2)} the hedge no longer covers what you owe.`}</p>`;
+  for (const w of q.warnings) html += `<div class="notice warn">${esc(w)}</div>`;
+  $("#audit-summary").innerHTML = html;
+  const rows = a.rows.map((r) => `<tr><td class="l">${fmt.gal(r.diesel, 3)}${r.on_grid ? "" : " *"}</td><td>${fmt.pct(r.carrier_surcharge)}</td><td>${fmt.pct(r.effective_surcharge)}</td><td>${fmt.pct(r.charged_surcharge)}</td><td>${fmt.usd(r.liability)}</td><td>${fmt.usd(r.hedge_payout)}</td><td>${fmt.usd(r.net_pnl)}</td><td class="${r.passed ? "ok-t" : "bad-t"}">${r.passed ? "Pass" : "Fail"}</td></tr>`).join("");
+  $("#audit-table").innerHTML = `<table><thead><tr><th>Diesel</th><th>Carrier</th><th>Discounted</th><th>Shipper pays</th><th>You owe</th><th>Hedge pays</th><th>Net profit</th><th>Check</th></tr></thead><tbody>${rows}</tbody></table><p class="hint">* a point where the carrier table steps up or a contract starts paying, checked in addition to the 5¢ grid.</p>`;
+}
+
+function renderInfeasible(q) {
+  const r = q.report, s = q.suggested_cap;
+  const sh = r.shortfalls.slice(0, 10).map((x) => `<tr><td class="l">${fmt.gal(x.diesel, 3)}</td><td>${fmt.usd(x.liability)}</td><td>${fmt.usd(x.max_hedge_payout)}</td><td class="bad-t">${fmt.usd(x.shortfall)}</td></tr>`).join("");
+  const ex = r.exhausted.map((e) => `<tr><td class="l"><span class="venue">${e.venue}</span></td><td class="l">${esc(e.market_id)}</td><td>${fmt.int(e.depth)}</td><td>${fmt.usd(e.payout_at_worst)}</td><td>+${fmt.int(e.additional_needed)}</td></tr>`).join("");
+  $("#infeasible").innerHTML = `
+    <div class="block-head"><h2>This cap can't be guaranteed</h2><span class="pill bad">${CROSS} not enough market depth</span></div>
+    <div class="notice crit"><pre>${esc(r.summary)}</pre></div>
+    ${s ? `<div class="notice warn"><span>The lowest cap current liquidity can guarantee is <b>${fmt.pct(s.cap)}</b>, for a fee of ${fmt.usd(s.fee_dollars)} (${fmt.pp(s.fee_pct)} of spend).</span>${LIVE ? `<span><button class="btn-ghost" id="use-suggested" type="button">Quote at ${fmt.pct(s.cap)}</button></span>` : ""}</div>` : ""}
+    <h3>Prices that can't be covered even when every contract is bought</h3>
+    <div class="tscroll"><table><thead><tr><th>Diesel</th><th>You owe</th><th>Max hedge payout</th><th>Shortfall</th></tr></thead><tbody>${sh}</tbody></table></div>
+    ${r.shortfalls.length > 10 ? `<p class="hint">${r.shortfalls.length - 10} more prices fall short.</p>` : ""}
+    ${ex ? `<h3>Markets with their whole order book used up</h3><div class="tscroll"><table><thead><tr><th>Venue</th><th>Market</th><th>Depth</th><th>Pays per contract</th><th>Extra needed alone</th></tr></thead><tbody>${ex}</tbody></table></div>` : ""}`;
+  const b = $("#use-suggested");
+  if (b) b.addEventListener("click", () => { $("#promised_cap").value = +(s.cap * 100).toFixed(4); runAll(); });
+}
+
+function render(q) {
+  state.q = q;
+  renderChips(q);
+  renderMarket(q);
+  const ok = q.status === "ok";
+  document.querySelectorAll(".ok-only").forEach((el) => (el.hidden = !ok));
+  $("#infeasible").hidden = ok;
+  if (!ok) { renderInfeasible(q); return; }
+  renderQuote(q);
+  renderSteps(q);
+  const sl = $("#slider");
+  sl.min = 0; sl.max = q.curve.prices.length - 1; sl.step = 1;
+  $("#slider-lo").textContent = fmt.gal(q.curve.prices[0]);
+  $("#slider-hi").textContent = fmt.gal(q.curve.prices.at(-1));
+  const t = q.kpis.trigger_price;
+  state.sel = idxAtPrice(q, t == null ? q.spot.diesel : Math.min(q.scenario_range.max, t + 0.68));
+  renderCharts(q);
+  renderPnlLede(q);
+  renderTicket(q);
+  renderAudit(q);
+}
+
+function renderMenu(sw) {
+  const qs = sw.quotes;
+  const hi = qs.findIndex((x) => Math.abs(x.cap - sw.current_cap) < 1e-9);
+  barChart($("#chart-menu"), {
+    label: "Fee as percent of spend by cap level", cats: qs.map((x) => fmt.pct(x.cap)),
+    ys: qs.map((x) => (x.feasible ? x.fee_pct : null)), highlight: hi < 0 ? null : hi,
+    yFmt: (v) => v.toFixed(2) + "%",
+    tip: (i) => { const x = qs[i]; return x.feasible ? `<b>Cap ${fmt.pct(x.cap)}</b><br>Fee ${fmt.pp(x.fee_pct)} · ${fmt.usd(x.fee_dollars)}<br>Shipper's worst case ${fmt.pp(x.all_in_max_pct)}` : `<b>Cap ${fmt.pct(x.cap)}</b><br>Not enough market depth`; },
+  });
+  const rows = qs.map((x, i) => {
+    const load = x.feasible && x.expected_claims > 0.005 ? (x.fee_dollars / x.expected_claims).toFixed(1) + "×" : "–";
+    const use = LIVE && x.feasible && i !== hi ? `<button class="btn-ghost" type="button" data-cap="${x.cap}">Use</button>` : "";
+    return `<tr class="${i === hi ? "hl" : ""}"><td class="l">${fmt.pct(x.cap)}${i === hi ? " · current" : ""}</td>
+      <td>${x.feasible ? fmt.usd(x.hedge_cost) : "not enough depth"}</td><td>${x.feasible ? fmt.usd(x.fee_dollars) : "–"}</td>
+      <td>${x.feasible ? fmt.pp(x.fee_pct) : "–"}</td><td>${x.feasible ? fmt.pp(x.all_in_max_pct) : "–"}</td>
+      <td>${x.prob_binds == null ? "–" : (x.prob_binds * 100).toFixed(1) + "%"}</td>
+      <td>${x.expected_claims == null ? "–" : fmt.usd(x.expected_claims)}</td><td>${load}</td><td>${use}</td></tr>`;
+  }).join("");
+  $("#menu-table").innerHTML = `<table><thead><tr><th>Cap</th><th>Hedge cost</th><th>Fee</th><th>Fee % of spend</th><th>Shipper's worst case</th><th>Chance it pays</th><th>Expected claims</th><th>Fee ÷ claims</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="hint">Fee ÷ claims shows how many dollars of fee you charge per expected dollar paid out. The extra covers spreads, whole-contract rounding and your margin.</p>`;
+  $("#menu-table").querySelectorAll("button[data-cap]").forEach((b) => b.addEventListener("click", () => { $("#promised_cap").value = +(Number(b.dataset.cap) * 100).toFixed(4); runAll(); }));
+  state.sweep = sw;
+}
+
+// ------------------------------------------------------------------------- I/O
+async function api(path, body) {
+  const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  const data = await r.json().catch(() => ({ error: `Server returned ${r.status}` }));
+  if (!r.ok) throw new Error(data.error || `Server returned ${r.status}`);
+  return data;
+}
+
+async function runAll() {
+  const btn = $("#run"), msg = $("#formmsg");
+  let req;
+  try { req = readForm(); } catch (e) { msg.textContent = e.message; return; }
+  msg.textContent = "";
+  btn.disabled = true; btn.textContent = "Solving…";
+  $("#main").setAttribute("aria-busy", "true");
+  try {
+    render(await api("/api/quote", req));
+    $("#main").setAttribute("aria-busy", "false");
+    btn.textContent = "Building pricing menu…";
+    $("#menu-table").innerHTML = `<p class="muted">Pricing each cap level…</p>`;
+    renderMenu(await api("/api/sweep", { request: req }));
+  } catch (e) {
+    msg.textContent = `Could not run the quote: ${e.message}`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Run quote";
+    $("#main").setAttribute("aria-busy", "false");
+  }
+}
+
+$("#slider").addEventListener("input", (e) => select(+e.target.value, null));
+$("#form").addEventListener("submit", (e) => { e.preventDefault(); if (LIVE) runAll(); });
+let rz;
+window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (state.q && state.q.status === "ok") renderCharts(state.q); if (state.sweep) renderMenu(state.sweep); }, 150); });
+
+(async function boot() {
+  if (!LIVE) {
+    fillForm(SNAP.quote.inputs);
+    $("#fs").disabled = true; $("#run").hidden = true; $("#snapnote").hidden = false;
+    render(SNAP.quote); renderMenu(SNAP.sweep);
+    return;
+  }
+  try { fillForm(await api("/api/defaults")); } catch (e) { $("#formmsg").textContent = `Could not reach the engine: ${e.message}`; return; }
+  runAll();
+})();
+</script>
